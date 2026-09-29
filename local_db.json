@@ -1,0 +1,452 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "openId": "dev-admin-openid",
+      "name": "Local Admin User",
+      "email": "admin@localhost",
+      "loginMethod": "google-dev",
+      "role": "admin",
+      "status": "active",
+      "createdAt": "2026-09-10T11:58:54.124Z",
+      "updatedAt": "2026-09-28T06:23:26.395Z",
+      "lastSignedIn": "2026-09-28T06:23:26.395Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "Research",
+      "description": "Academic research projects",
+      "createdAt": "2026-09-10T11:58:54.120Z",
+      "updatedAt": "2026-09-10T11:58:54.120Z"
+    },
+    {
+      "id": 2,
+      "name": "Software Engineering",
+      "description": "Software development artifacts",
+      "createdAt": "2026-09-10T11:58:54.120Z",
+      "updatedAt": "2026-09-10T11:58:54.120Z"
+    },
+    {
+      "id": 3,
+      "name": "CAPSTONE",
+      "description": null,
+      "createdAt": "2026-09-25T16:07:54.886Z",
+      "updatedAt": "2026-09-25T16:07:54.886Z"
+    }
+  ],
+  "projects": [
+    {
+      "id": 1,
+      "title": "HOME AUTOMATION ANDROID APPLICATION USING ARDUINO",
+      "abstract": "The Home Automation Android Application Using Arduino is designed to provide convenient control of household appliances through an Android mobile application. The system uses Arduino to receive commands from the application and control connected devices. It aims to improve convenience, accessibility, and efficient appliance management at home.",
+      "categoryId": 3,
+      "adviser": "JOHN VIANNEY V. MANUEL",
+      "members": "CALONGE, JEHOSAPHAT D.\nPIOQUINTO, JEREMY L.\nCARDENAS, ANGEL R.\nTAGARA, PHINKIE R.\nREYES, MATTHEW B.\nDAYRITH, MELANIE V.\nBRAVO, JERICHO P.",
+      "features": "Research paradigm\nRapid Application Development Life Cycle\nOpening the Garage Door\nClosing the Garage Door\nSwitching the Light On\nSwitching the Light Off\nSwitching the Celling Fan On\nSwitching the Celling Fan Off\nSwitching the Household Appliance Off",
+      "research": "Home Automation Android application Using Arduino",
+      "schoolYear": "2023-2024",
+      "fileUrl": "/manus-storage/projects/1/1790353363474-Adobe-Scan-Sep-26-2026_26dbf162.pdf",
+      "fileKey": "projects/1/1790353363474-Adobe-Scan-Sep-26-2026_26dbf162.pdf",
+      "fileName": "Adobe-Scan-Sep-26-2026.pdf",
+      "fileType": "application/pdf",
+      "uploadedBy": 1,
+      "status": "approved",
+      "createdAt": "2026-09-25T16:22:43.494Z",
+      "updatedAt": "2026-09-25T16:22:59.560Z"
+    },
+    {
+      "id": 2,
+      "title": "TODDLER'S LEARNING GAME",
+      "abstract": "This study focuses on the mental development of toddlers (3-6 y/o). Educational games are often used in a teaching approach known as game-based learning. The goal of this study is to educate and teach the toddlers and promote simple vocabulary.",
+      "categoryId": 3,
+      "adviser": "Mr. John Vianney V. Manuel",
+      "members": "Duguinay, Gonoroso III C.\nGanaden, Cherry Ann D.\nBallaros Markshano G.\nBallado, Rogelio R.\nBernal, Jovolyn U.\nCorbillon, AJ A.",
+      "features": "Game Notice for Parents\nGame Category Selection\nAnimal Learning\nColor Learning\nLetter Learning\nNumber Learning (1–10)\nShape Learning\nNext and Previous Navigation\nAnimal Selection\nColor Selection\nLetter Selection\nNumber Selection\nShape Selection\nOffline Use (No Internet Required)\nMobile-Based Learning Game",
+      "research": "The Home Automation Android Application Using Arduino is designed to provide convenient control of household appliances through an Android mobile application. The system uses Arduino to receive commands from the application and control connected devices. It aims to improve convenience, accessibility, and efficient appliance management at home.",
+      "schoolYear": "2024-2025",
+      "fileUrl": "/manus-storage/projects/1/1790356467089-TODDLERS-LEARNING-GAME__3__4c8abb22.pdf",
+      "fileKey": "projects/1/1790356467089-TODDLERS-LEARNING-GAME__3__4c8abb22.pdf",
+      "fileName": "TODDLERS-LEARNING-GAME (3).pdf",
+      "fileType": "application/pdf",
+      "uploadedBy": 1,
+      "status": "approved",
+      "createdAt": "2026-09-25T17:14:27.118Z",
+      "updatedAt": "2026-09-25T17:14:38.283Z"
+    }
+  ],
+  "bookmarks": [],
+  "downloadRequests": [],
+  "activityLogs": [
+    {
+      "id": 1,
+      "userId": 1,
+      "action": "category_created",
+      "description": "Created category: Capstone",
+      "entityType": "category",
+      "entityId": 3,
+      "createdAt": "2026-09-10T11:59:36.949Z"
+    },
+    {
+      "id": 2,
+      "userId": 1,
+      "action": "user_login",
+      "description": "User logged in via Google: Local Admin User",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-10T12:19:20.337Z"
+    },
+    {
+      "id": 3,
+      "userId": 1,
+      "action": "category_deleted",
+      "description": "Deleted category id: 3",
+      "entityType": "category",
+      "entityId": 3,
+      "createdAt": "2026-09-10T12:24:14.632Z"
+    },
+    {
+      "id": 4,
+      "userId": 1,
+      "action": "user_status_updated",
+      "description": "Updated user status for user 1 to inactive",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-15T04:32:53.044Z"
+    },
+    {
+      "id": 5,
+      "userId": 1,
+      "action": "project_uploaded",
+      "description": "Uploaded project: practice",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-15T07:49:33.627Z"
+    },
+    {
+      "id": 6,
+      "userId": 1,
+      "action": "project_approved",
+      "description": "Approved project: 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-15T07:49:47.107Z"
+    },
+    {
+      "id": 7,
+      "userId": 1,
+      "action": "document_accessed",
+      "description": "Accessing protected file: Nonidel resume (1).pdf for project 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-15T07:51:35.117Z"
+    },
+    {
+      "id": 8,
+      "userId": 1,
+      "action": "bookmark_added",
+      "description": "Bookmarked project: 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-17T12:30:11.501Z"
+    },
+    {
+      "id": 9,
+      "userId": 1,
+      "action": "bookmark_removed",
+      "description": "Unbookmarked project: 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-17T12:35:14.548Z"
+    },
+    {
+      "id": 10,
+      "userId": 1,
+      "action": "bookmark_added",
+      "description": "Bookmarked project: 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-17T12:35:20.913Z"
+    },
+    {
+      "id": 11,
+      "userId": 1,
+      "action": "bookmark_removed",
+      "description": "Unbookmarked project: 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-17T12:35:27.744Z"
+    },
+    {
+      "id": 12,
+      "userId": 1,
+      "action": "user_role_updated",
+      "description": "Updated role for user 1 to user",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-17T12:35:44.054Z"
+    },
+    {
+      "id": 13,
+      "userId": 1,
+      "action": "user_status_updated",
+      "description": "Updated user status for user 1 to active",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-17T12:36:16.805Z"
+    },
+    {
+      "id": 14,
+      "userId": 1,
+      "action": "user_status_updated",
+      "description": "Updated user status for user 1 to inactive",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-17T12:36:18.516Z"
+    },
+    {
+      "id": 15,
+      "userId": 1,
+      "action": "user_status_updated",
+      "description": "Updated user status for user 1 to active",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-17T12:36:18.590Z"
+    },
+    {
+      "id": 16,
+      "userId": 1,
+      "action": "user_status_updated",
+      "description": "Updated user status for user 1 to inactive",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-17T12:36:19.420Z"
+    },
+    {
+      "id": 17,
+      "userId": 1,
+      "action": "project_uploaded",
+      "description": "Uploaded project: 2d game",
+      "entityType": "project",
+      "entityId": 2,
+      "createdAt": "2026-09-17T12:39:08.295Z"
+    },
+    {
+      "id": 18,
+      "userId": 1,
+      "action": "project_rejected",
+      "description": "Rejected project: 2 - pangit ng system nyo",
+      "entityType": "project",
+      "entityId": 2,
+      "createdAt": "2026-09-17T12:40:22.113Z"
+    },
+    {
+      "id": 19,
+      "userId": 1,
+      "action": "user_login",
+      "description": "User logged in via Google: Local Admin User",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-21T06:08:30.374Z"
+    },
+    {
+      "id": 20,
+      "userId": 1,
+      "action": "user_login",
+      "description": "User logged in via Google: Local Admin User",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-24T11:38:28.247Z"
+    },
+    {
+      "id": 21,
+      "userId": 1,
+      "action": "user_login",
+      "description": "User logged in via Google: Local Admin User",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-24T11:40:08.641Z"
+    },
+    {
+      "id": 22,
+      "userId": 1,
+      "action": "project_deleted",
+      "description": "Deleted project: 2d game",
+      "entityType": "project",
+      "entityId": 2,
+      "createdAt": "2026-09-24T11:40:21.286Z"
+    },
+    {
+      "id": 23,
+      "userId": 1,
+      "action": "user_login",
+      "description": "User logged in via Google: Local Admin User",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-24T11:49:35.158Z"
+    },
+    {
+      "id": 24,
+      "userId": 1,
+      "action": "document_accessed",
+      "description": "Accessing protected file: Nonidel resume (1).pdf for project 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-24T11:50:02.819Z"
+    },
+    {
+      "id": 25,
+      "userId": 1,
+      "action": "user_login",
+      "description": "User logged in via Google: Local Admin User",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-24T12:12:05.234Z"
+    },
+    {
+      "id": 26,
+      "userId": 1,
+      "action": "bookmark_added",
+      "description": "Bookmarked project: 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-24T12:15:43.504Z"
+    },
+    {
+      "id": 27,
+      "userId": 1,
+      "action": "user_role_updated",
+      "description": "Updated role for user 1 to user",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-24T12:16:07.806Z"
+    },
+    {
+      "id": 28,
+      "userId": 1,
+      "action": "bookmark_removed",
+      "description": "Unbookmarked project: 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-25T13:14:00.829Z"
+    },
+    {
+      "id": 29,
+      "userId": 1,
+      "action": "project_deleted",
+      "description": "Deleted project: practice",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-25T15:41:21.334Z"
+    },
+    {
+      "id": 30,
+      "userId": 1,
+      "action": "user_status_updated",
+      "description": "Updated user status for user 1 to active",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-25T15:44:03.109Z"
+    },
+    {
+      "id": 31,
+      "userId": 1,
+      "action": "category_created",
+      "description": "Created category: CAPSTONE",
+      "entityType": "category",
+      "entityId": 3,
+      "createdAt": "2026-09-25T16:07:54.889Z"
+    },
+    {
+      "id": 32,
+      "userId": 1,
+      "action": "project_uploaded",
+      "description": "Uploaded project: HOME AUTOMATION ANDROID APPLICATION USING ARDUINO",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-25T16:22:43.495Z"
+    },
+    {
+      "id": 33,
+      "userId": 1,
+      "action": "project_approved",
+      "description": "Approved project: 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-25T16:22:59.561Z"
+    },
+    {
+      "id": 34,
+      "userId": 1,
+      "action": "document_accessed",
+      "description": "Accessing protected file: Adobe-Scan-Sep-26-2026.pdf for project 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-25T16:30:22.605Z"
+    },
+    {
+      "id": 35,
+      "userId": 1,
+      "action": "project_uploaded",
+      "description": "Uploaded project: TODDLER'S LEARNING GAME",
+      "entityType": "project",
+      "entityId": 2,
+      "createdAt": "2026-09-25T17:14:27.121Z"
+    },
+    {
+      "id": 36,
+      "userId": 1,
+      "action": "project_approved",
+      "description": "Approved project: 2",
+      "entityType": "project",
+      "entityId": 2,
+      "createdAt": "2026-09-25T17:14:38.286Z"
+    },
+    {
+      "id": 37,
+      "userId": 1,
+      "action": "document_accessed",
+      "description": "Accessing protected file: Adobe-Scan-Sep-26-2026.pdf for project 1",
+      "entityType": "project",
+      "entityId": 1,
+      "createdAt": "2026-09-25T17:15:02.395Z"
+    },
+    {
+      "id": 38,
+      "userId": 1,
+      "action": "user_status_updated",
+      "description": "Updated user status for user 1 to inactive",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-28T05:18:47.245Z"
+    },
+    {
+      "id": 39,
+      "userId": 1,
+      "action": "user_status_updated",
+      "description": "Updated user status for user 1 to active",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-28T05:18:52.618Z"
+    },
+    {
+      "id": 40,
+      "userId": 1,
+      "action": "user_login",
+      "description": "User logged in via Google: Local Admin User",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-28T05:25:02.325Z"
+    },
+    {
+      "id": 41,
+      "userId": 1,
+      "action": "user_login",
+      "description": "User logged in via Google: Local Admin User",
+      "entityType": "user",
+      "entityId": 1,
+      "createdAt": "2026-09-28T05:28:44.704Z"
+    }
+  ]
+}
