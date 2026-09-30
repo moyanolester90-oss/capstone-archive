@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
-import { Users } from "lucide-react";
+import { Users, Check, X } from "lucide-react";
 import { Link } from "wouter";
 
 const ROLE_LABELS: Record<string, string> = { student: "Student", adviser: "Adviser", admin: "Admin/Librarian" };
@@ -46,7 +46,7 @@ export default function UserManagement() {
       <div className="container">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground">User Management</h1>
-          <p className="text-muted-foreground">Manage account status. A user's role (Student, Adviser, or Admin/Librarian) is set at sign-up and can't be changed here — it stays fixed for the life of the account. Suspended or inactive users can't sign in until reactivated.</p>
+          <p className="text-muted-foreground">Manage account status. A user's role (Student, Adviser, or Admin/Librarian) is set at sign-up and can't be changed here — it stays fixed for the life of the account. Suspended or inactive users can't sign in until reactivated. New Student sign-ups start out Pending and can't sign in until you Approve or Reject them below.</p>
         </div>
 
         <Card>
@@ -79,40 +79,66 @@ export default function UserManagement() {
                         </Badge>
                       </td>
                       <td className="p-4">
-                        <Select
-                          value={u.status}
-                          disabled={isSelf}
-                          onValueChange={(val) => updateStatus.mutate({ userId: u.id, status: val as 'active' | 'inactive' | 'suspended' })}
-                        >
-                          <SelectTrigger className="w-[130px] h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
-                            <SelectItem value="suspended">Suspended</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {u.status === 'pending' ? (
+                          <Badge className="font-medium bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300" variant="secondary">
+                            Pending
+                          </Badge>
+                        ) : (
+                          <Select
+                            value={u.status}
+                            disabled={isSelf}
+                            onValueChange={(val) => updateStatus.mutate({ userId: u.id, status: val as 'active' | 'inactive' | 'suspended' })}
+                          >
+                            <SelectTrigger className="w-[130px] h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="inactive">Inactive</SelectItem>
+                              <SelectItem value="suspended">Suspended</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </td>
                       <td className="p-4 text-sm text-muted-foreground whitespace-nowrap">
                         {u.lastSignedIn ? `${new Date(u.lastSignedIn).toLocaleDateString()} ${new Date(u.lastSignedIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : "—"}
                       </td>
                       <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-8"
-                            disabled={isSelf}
-                            title={isSelf ? "You can't change your own account" : undefined}
-                            onClick={() => updateStatus.mutate({
-                              userId: u.id,
-                              status: u.status === 'active' ? 'inactive' : 'active'
-                            })}
-                          >
-                            {u.status === 'active' ? 'Deactivate' : 'Activate'}
-                          </Button>
-                        </div>
+                        {u.status === 'pending' ? (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              className="text-xs h-8 gap-1 bg-success text-white hover:bg-success/90"
+                              onClick={() => updateStatus.mutate({ userId: u.id, status: 'active' })}
+                            >
+                              <Check className="h-3.5 w-3.5" /> Approve
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-8 gap-1 text-destructive border-destructive/40 hover:bg-destructive/10"
+                              onClick={() => updateStatus.mutate({ userId: u.id, status: 'suspended' })}
+                            >
+                              <X className="h-3.5 w-3.5" /> Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-8"
+                              disabled={isSelf}
+                              title={isSelf ? "You can't change your own account" : undefined}
+                              onClick={() => updateStatus.mutate({
+                                userId: u.id,
+                                status: u.status === 'active' ? 'inactive' : 'active'
+                              })}
+                            >
+                              {u.status === 'active' ? 'Deactivate' : 'Activate'}
+                            </Button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                     );

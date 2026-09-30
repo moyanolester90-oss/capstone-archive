@@ -26,7 +26,11 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", USER_ROLES).default("student").notNull(),
-  status: mysqlEnum("status", ["active", "inactive", "suspended"]).default("active").notNull(),
+  // "pending" is only ever set by a fresh self-service Student sign-up — every
+  // other creation path (adviser/librarian sign-up, and any account created
+  // directly) still defaults to "active" exactly as before, so existing
+  // accounts and every non-student flow are unaffected by this value existing.
+  status: mysqlEnum("status", ["pending", "active", "inactive", "suspended"]).default("active").notNull(),
   // Credential login (School ID + password), added when Google/demo sign-in
   // was replaced by direct account sign-up. `schoolId` is the login handle
   // for every role; `yearSection` is collected for students only.

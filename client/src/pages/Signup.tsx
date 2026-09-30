@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
-import { AlertCircle, BookUser, Eye, EyeOff, GraduationCap, Library, Loader2 } from "lucide-react";
+import { AlertCircle, BookUser, CheckCircle2, Eye, EyeOff, GraduationCap, Library, Loader2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, YEAR_LEVELS } from "@shared/validation";
@@ -109,8 +109,19 @@ export default function Signup() {
     navigate("/dashboard");
   };
 
+  // A Student sign-up that comes back `pending` was NOT signed in (the
+  // account needs librarian approval first) — show a confirmation instead
+  // of redirecting to the dashboard as if they were logged in.
+  const [studentPending, setStudentPending] = useState(false);
+
   const signupStudent = trpc.auth.signupStudent.useMutation({
-    onSuccess: () => onDone(),
+    onSuccess: (data) => {
+      if (data.pending) {
+        setStudentPending(true);
+      } else {
+        onDone();
+      }
+    },
   });
   const signupStaff = trpc.auth.signupStaff.useMutation({
     onSuccess: () => onDone(),
@@ -237,6 +248,16 @@ export default function Signup() {
             )}
 
             <TabsContent value="student" className="pt-3">
+              {studentPending ? (
+                <div className="flex flex-col items-center text-center gap-3 py-6">
+                  <CheckCircle2 className="h-10 w-10 text-success" />
+                  <p className="font-medium text-foreground">Account created — awaiting approval</p>
+                  <p className="text-sm text-muted-foreground">
+                    Your Student account has been created. A librarian needs to approve it before you can sign in — please check back later.
+                  </p>
+                  <Link href="/login" className="text-sm font-medium text-primary hover:underline">Back to Sign in</Link>
+                </div>
+              ) : (
               <form className="space-y-3" onSubmit={submitStudent}>
                 <div className="space-y-1.5">
                   <Label htmlFor="student-id">School ID Number</Label>
@@ -277,6 +298,7 @@ export default function Signup() {
                   {signupStudent.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Student Account"}
                 </Button>
               </form>
+              )}
             </TabsContent>
 
             {staffRevealed && (

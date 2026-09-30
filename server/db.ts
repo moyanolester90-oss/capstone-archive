@@ -364,9 +364,17 @@ export async function createUserWithCredentials(input: {
   role: 'student' | 'adviser' | 'admin';
   email?: string | null;
   yearSection?: string | null;
+  /**
+   * Defaults to "active" — the same behavior as before this option existed.
+   * Only a fresh Student self-service sign-up passes "pending" here, so
+   * every other creation path (adviser/librarian sign-up, direct creation)
+   * is unaffected.
+   */
+  status?: 'pending' | 'active';
 }): Promise<{ id: number; openId: string }> {
   const openId = `local:${input.schoolId.toLowerCase()}`;
   const trimmedName = input.name.trim();
+  const status = input.status ?? "active";
 
   const db = await getDb();
   if (!db) {
@@ -381,7 +389,7 @@ export async function createUserWithCredentials(input: {
     const now = new Date().toISOString();
     data.users.push({
       id, openId, name: input.name, email: input.email ?? "", loginMethod: "credentials",
-      role: input.role, status: "active", schoolId: input.schoolId, passwordHash: input.passwordHash,
+      role: input.role, status, schoolId: input.schoolId, passwordHash: input.passwordHash,
       yearSection: input.yearSection ?? null, createdAt: now, updatedAt: now, lastSignedIn: now,
     });
     saveLocalDb();
@@ -398,7 +406,7 @@ export async function createUserWithCredentials(input: {
   try {
     const result: any = await db.insert(users).values({
       openId, name: input.name, email: input.email ?? null, loginMethod: "credentials",
-      role: input.role, status: "active", schoolId: input.schoolId, passwordHash: input.passwordHash,
+      role: input.role, status, schoolId: input.schoolId, passwordHash: input.passwordHash,
       yearSection: input.yearSection ?? null, lastSignedIn: new Date(),
     });
     const insertId = result?.[0]?.insertId;
@@ -434,7 +442,7 @@ export async function getUserById(id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function updateUserStatus(userId: number, status: 'active' | 'inactive' | 'suspended') {
+export async function updateUserStatus(userId: number, status: 'pending' | 'active' | 'inactive' | 'suspended') {
   const db = await getDb();
   if (!db) {
     const data = loadLocalDb();

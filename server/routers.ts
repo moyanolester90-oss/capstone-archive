@@ -97,17 +97,26 @@ async function setSessionCookie(ctx: TrpcContext, user: { openId: string; name: 
   ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 }
 
-/** Creates an account from the Sign Up form, logs it, and signs the new user in. */
+/**
+ * Creates an account from the Sign Up form and logs it.
+ *
+ * A new Student account starts out `pending`: they are NOT signed in (no
+ * session cookie is set), and can't sign in at all until the librarian/admin
+ * approves them from Admin > Users (see the `login` and `users.updateStatus`
+ * procedures below). Adviser/Librarian sign-up is unchanged — those accounts
+ * are still created `active` and signed in immediately, exactly as before.
+ */
 async function signUpAndLogIn(ctx: TrpcContext, input: {
   schoolId: string; password: string; name: string; role: 'student' | 'adviser' | 'admin';
   yearSection: string | null; email: string | null;
 }) {
   const passwordHash = await hashPassword(input.password);
+  const status = input.role === 'student' ? 'pending' as const : 'active' as const;
   let created: { id: number; openId: string };
   try {
     created = await createUserWithCredentials({
       schoolId: input.schoolId, passwordHash, name: input.name, role: input.role,
-      email: input.email, yearSection: input.yearSection,
+      email: input.email, yearSection: input.yearSection, status,
     });
   } catch (error: any) {
     if (error?.message === 'SCHOOL_ID_TAKEN' || error?.message === 'NAME_TAKEN') {
@@ -118,12 +127,18 @@ async function signUpAndLogIn(ctx: TrpcContext, input: {
   await createActivityLog({
     userId: created.id,
     action: 'user_signup',
-    description: `New ${ROLE_LABELS[input.role]} account created: ${input.name} (${input.schoolId})`,
+    description: status === 'pending'
+      ? `New ${ROLE_LABELS[input.role]} account created: ${input.name} (${input.schoolId}) — awaiting admin approval`
+      : `New ${ROLE_LABELS[input.role]} account created: ${input.name} (${input.schoolId})`,
     entityType: 'user',
     entityId: created.id,
   });
+  if (status === 'pending') {
+    // No session cookie: a pending account can't be signed into at all yet.
+    return { success: true, pending: true } as const;
+  }
   await setSessionCookie(ctx, { openId: created.openId, name: input.name });
-  return { success: true } as const;
+  return { success: true, pending: false } as const;
 }
 
 /**
@@ -253,6 +268,9 @@ export const appRouter = router({
       const user = await getUserBySchoolId(input.schoolId);
       if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: GENERIC_ERROR });
+      }
+      if (user.status === 'pending') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Your account is awaiting librarian approval. Please check back once it has been approved.' });
       }
       if (user.status !== 'active') {
         throw new TRPCError({ code: 'FORBIDDEN', message: `Your account is ${user.status}. Please contact the librarian.` });
@@ -843,14 +861,22 @@ export const appRouter = router({
     list: adminProcedure.query(async () => (await getAllUsers()).map(sanitizeUser)),
     get: adminProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => sanitizeUser(await getUserById(input.id))),
     updateStatus: adminProcedure.input(z.object({
-      userId: z.number(), status: z.enum(['active', 'inactive', 'suspended']),
+      userId: z.number(), status: z.enum(['pending', 'active', 'inactive', 'suspended']),
     })).mutation(async ({ ctx, input }) => {
       await assertAdminChangeAllowed(ctx.user!.id, input.userId, input.status !== 'active');
+      const before = await getUserById(input.userId);
       await updateUserStatus(input.userId, input.status);
       const target = await getUserById(input.userId);
+      const name = target?.name || `user ${input.userId}`;
+      // Approving/rejecting a still-pending sign-up gets its own wording in
+      // the activity log; every other status change keeps the original
+      // generic "Set X to Y" message unchanged.
+      const description = before?.status === 'pending'
+        ? (input.status === 'active' ? `Approved sign-up request for ${name}` : `Rejected sign-up request for ${name}`)
+        : `Set ${name} to ${input.status}`;
       await createActivityLog({
         userId: ctx.user!.id, action: 'user_status_updated',
-        description: `Set ${target?.name || 'user ' + input.userId} to ${input.status}`,
+        description,
         entityType: 'user', entityId: input.userId,
       });
       return { success: true };
