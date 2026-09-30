@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -9,10 +9,18 @@ interface ContentProtectionProps {
   enabled?: boolean;
 }
 
+// A blur→refocus cycle shorter than this is treated as a probable screenshot
+// tool (Snipping Tool, Snip & Sketch launched via Win+Shift+S, Xbox Game Bar's
+// Win+Alt+PrintScreen clip, etc). Those all steal window focus for their
+// capture overlay and hand it back moments later — a pattern ordinary
+// alt-tabbing to a genuinely different task doesn't produce.
+const SUSPICIOUS_REFOCUS_MS = 4000;
+
 export default function ContentProtection({ children, projectId, enabled = true }: ContentProtectionProps) {
   const [isBlurred, setIsBlurred] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [warningReason, setWarningReason] = useState("");
+  const blurredAtRef = useRef<number | null>(null);
 
   const logActivity = trpc.protection.logSuspiciousActivity.useMutation();
 
@@ -30,21 +38,48 @@ export default function ContentProtection({ children, projectId, enabled = true 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
 
+    // Best-effort clipboard wipe: run whenever we suspect a capture just
+    // happened, so a screenshot that did land on the clipboard can't be
+    // pasted anywhere afterward. Clipboard access can throw (permissions,
+    // insecure context, unsupported browser) — always swallow that quietly,
+    // it's a bonus deterrent, not something the UI depends on.
+    const wipeClipboard = () => {
+      navigator.clipboard?.writeText("").catch(() => {});
+    };
+
     const handleVisibilityChange = () => {
       if (document.hidden) {
+        blurredAtRef.current = Date.now();
         setIsBlurred(true);
       } else {
-        // If they returned, we keep it blurred if a warning was triggered
-        if (!showWarning) setIsBlurred(false);
+        const blurredAt = blurredAtRef.current;
+        blurredAtRef.current = null;
+        if (blurredAt && Date.now() - blurredAt < SUSPICIOUS_REFOCUS_MS) {
+          wipeClipboard();
+          handleSuspiciousActivity("Suspicious activity detected: the window was hidden briefly, consistent with a screenshot or screen-recording tool.");
+        } else if (!showWarning) {
+          setIsBlurred(false);
+        }
       }
     };
 
     const handleBlur = () => {
+      blurredAtRef.current = Date.now();
       setIsBlurred(true);
     };
 
     const handleFocus = () => {
-      if (!showWarning) setIsBlurred(false);
+      const blurredAt = blurredAtRef.current;
+      blurredAtRef.current = null;
+      if (blurredAt && Date.now() - blurredAt < SUSPICIOUS_REFOCUS_MS) {
+        // The window lost and regained focus in one quick burst — the exact
+        // fingerprint of Win+Shift+S / Snip & Sketch / Game Bar opening their
+        // capture overlay on top of this window and then closing it.
+        wipeClipboard();
+        handleSuspiciousActivity("Suspicious activity detected: a screen-capture tool may have just been used.");
+      } else if (!showWarning) {
+        setIsBlurred(false);
+      }
     };
 
     const handleContextMenu = (e: MouseEvent) => {
@@ -55,7 +90,7 @@ export default function ContentProtection({ children, projectId, enabled = true 
     const handlePrintScreen = (e: KeyboardEvent) => {
       // Windows only reports the Print Screen key when it is released, so check both.
       if (e.key === "PrintScreen") {
-        navigator.clipboard?.writeText("").catch(() => {}); // Wipe the captured image from the clipboard
+        wipeClipboard();
         handleSuspiciousActivity("Screen capture is prohibited.");
       }
     };
@@ -63,16 +98,37 @@ export default function ContentProtection({ children, projectId, enabled = true 
     const handleKeyDown = (e: KeyboardEvent) => {
       handlePrintScreen(e);
 
-      // Detect Ctrl+C, Ctrl+U, Ctrl+S, Ctrl+P, F12, Ctrl+Shift+I/J/C
       const isCtrl = e.ctrlKey || e.metaKey;
       const isShift = e.shiftKey;
+      const isWin = e.metaKey; // Windows/Cmd key
+      const key = e.key.toLowerCase();
 
-      if (isCtrl && (e.key === 'c' || e.key === 'u' || e.key === 's' || e.key === 'p')) {
+      // Windows Snipping Tool / Snip & Sketch (Win+Shift+S) and Xbox Game
+      // Bar's clip/screenshot shortcuts (Win+Alt+PrintScreen, Win+G). These
+      // are OS-level global hotkeys that the browser usually never sees —
+      // Windows intercepts them before the page gets a keydown event — so
+      // this only catches the rare case the event does surface (e.g. some
+      // browser/OS combinations, or the key sequence being simulated). It's
+      // a bonus layer on top of the blur/refocus detection above, which is
+      // what reliably catches the real-world case.
+      if (isWin && isShift && key === "s") {
         e.preventDefault();
-        handleSuspiciousActivity(`Shortcut ${isCtrl ? 'Ctrl' : 'Cmd'}+${e.key.toUpperCase()} is disabled.`);
+        wipeClipboard();
+        handleSuspiciousActivity("Screen capture is prohibited.");
+      }
+      if (isWin && (key === "g" || (e.altKey && e.key === "PrintScreen"))) {
+        e.preventDefault();
+        wipeClipboard();
+        handleSuspiciousActivity("Screen capture is prohibited.");
       }
 
-      if (e.key === 'F12' || (isCtrl && isShift && (e.key === 'I' || e.key === 'J' || e.key === 'C'))) {
+      // Detect Ctrl+C, Ctrl+U, Ctrl+S, Ctrl+P, F12, Ctrl+Shift+I/J/C
+      if (isCtrl && (key === 'c' || key === 'u' || key === 's' || key === 'p')) {
+        e.preventDefault();
+        handleSuspiciousActivity(`Shortcut ${e.ctrlKey ? 'Ctrl' : 'Cmd'}+${key.toUpperCase()} is disabled.`);
+      }
+
+      if (e.key === 'F12' || (isCtrl && isShift && (key === 'i' || key === 'j' || key === 'c'))) {
         e.preventDefault();
         handleSuspiciousActivity("Developer tools are disabled.");
       }
@@ -102,9 +158,10 @@ export default function ContentProtection({ children, projectId, enabled = true 
     document.addEventListener("copy", handleCopy);
     document.addEventListener("dragstart", handleDragStart);
 
-    // Block Print
+    // Block printing, text selection, and the mobile "long-press to save
+    // image/screenshot hint" callout menu.
     const style = document.createElement('style');
-    style.innerHTML = `@media print { body { display: none !important; } } body { -webkit-user-select: none; user-select: none; } input, textarea { -webkit-user-select: text; user-select: text; }`;
+    style.innerHTML = `@media print { body { display: none !important; } } body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; } input, textarea { -webkit-user-select: text; user-select: text; }`;
     document.head.appendChild(style);
 
     return () => {
