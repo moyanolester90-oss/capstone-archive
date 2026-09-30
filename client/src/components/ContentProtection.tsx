@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useLayoutEffect, useState, useCallback, useRef } from "react";
 import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -16,16 +16,49 @@ interface ContentProtectionProps {
 // alt-tabbing to a genuinely different task doesn't produce.
 const SUSPICIOUS_REFOCUS_MS = 4000;
 
+// Applied directly to the DOM node (see `protectedRef` below) the instant a
+// threat is detected, so the visual protection lands in the very same tick
+// as the event — not on React's next render/paint, and with no CSS
+// transition to ramp through. React state (`isBlurred`) is still set right
+// after for the banner/modal and to keep the blur applied across re-renders,
+// but the pixels themselves are never unprotected while we wait for that.
+const INSTANT_BLUR_STYLE = "blur(24px)";
+
 export default function ContentProtection({ children, projectId, enabled = true }: ContentProtectionProps) {
   const [isBlurred, setIsBlurred] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [warningReason, setWarningReason] = useState("");
   const blurredAtRef = useRef<number | null>(null);
+  const protectedRef = useRef<HTMLDivElement>(null);
 
   const logActivity = trpc.protection.logSuspiciousActivity.useMutation();
 
+  // Mutates the DOM synchronously, before React even schedules a re-render.
+  // This is what actually closes the timing gap: a keydown/blur handler
+  // that only called setState would still leave the unprotected frame on
+  // screen until React commits and the browser paints, which is exactly
+  // the window a screenshot shortcut fires inside.
+  const engageBlurNow = useCallback(() => {
+    const el = protectedRef.current;
+    if (!el) return;
+    el.style.filter = INSTANT_BLUR_STYLE;
+    (el.style as any).webkitFilter = INSTANT_BLUR_STYLE;
+    el.style.pointerEvents = "none";
+    (el.style as any).userSelect = "none";
+  }, []);
+
+  const releaseBlurNow = useCallback(() => {
+    const el = protectedRef.current;
+    if (!el) return;
+    el.style.filter = "";
+    (el.style as any).webkitFilter = "";
+    el.style.pointerEvents = "";
+    (el.style as any).userSelect = "";
+  }, []);
+
   const handleSuspiciousActivity = useCallback((reason: string) => {
     if (!enabled) return;
+    engageBlurNow();
     setWarningReason(reason);
     setShowWarning(true);
     setIsBlurred(true);
@@ -33,9 +66,13 @@ export default function ContentProtection({ children, projectId, enabled = true 
     // Log to server
     logActivity.mutate({ projectId, reason });
     console.warn(`[Content Protection] ${reason}`);
-  }, [enabled, projectId, logActivity]);
+  }, [enabled, projectId, logActivity, engageBlurNow]);
 
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) so every listener and the protective
+  // <style> block are attached synchronously before the browser paints —
+  // there is no frame where the document is on screen and unprotected
+  // while React is still getting around to wiring up the defenses.
+  useLayoutEffect(() => {
     if (!enabled || typeof window === "undefined") return;
 
     // Best-effort clipboard wipe: run whenever we suspect a capture just
@@ -49,6 +86,10 @@ export default function ContentProtection({ children, projectId, enabled = true 
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
+        // Blur the instant the page is hidden, not on React's next tick —
+        // this is the same-frame reaction that closes the "briefly visible
+        // unprotected" gap.
+        engageBlurNow();
         blurredAtRef.current = Date.now();
         setIsBlurred(true);
       } else {
@@ -58,12 +99,14 @@ export default function ContentProtection({ children, projectId, enabled = true 
           wipeClipboard();
           handleSuspiciousActivity("Suspicious activity detected: the window was hidden briefly, consistent with a screenshot or screen-recording tool.");
         } else if (!showWarning) {
+          releaseBlurNow();
           setIsBlurred(false);
         }
       }
     };
 
     const handleBlur = () => {
+      engageBlurNow();
       blurredAtRef.current = Date.now();
       setIsBlurred(true);
     };
@@ -78,6 +121,7 @@ export default function ContentProtection({ children, projectId, enabled = true 
         wipeClipboard();
         handleSuspiciousActivity("Suspicious activity detected: a screen-capture tool may have just been used.");
       } else if (!showWarning) {
+        releaseBlurNow();
         setIsBlurred(false);
       }
     };
@@ -116,6 +160,15 @@ export default function ContentProtection({ children, projectId, enabled = true 
         wipeClipboard();
         handleSuspiciousActivity("Screen capture is prohibited.");
       }
+      // Win+Ctrl+S is not a standard Windows capture shortcut, but some
+      // third-party snipping/screen-recording utilities let users rebind
+      // their capture hotkey to combinations like this, so it's covered
+      // alongside the built-in ones.
+      if (isWin && e.ctrlKey && key === "s") {
+        e.preventDefault();
+        wipeClipboard();
+        handleSuspiciousActivity("Screen capture is prohibited.");
+      }
       if (isWin && (key === "g" || (e.altKey && e.key === "PrintScreen"))) {
         e.preventDefault();
         wipeClipboard();
@@ -148,11 +201,15 @@ export default function ContentProtection({ children, projectId, enabled = true 
       e.preventDefault();
     };
 
+    // keydown/keyup are registered with `capture: true` so they run in the
+    // capturing phase — the earliest point the browser dispatches the event
+    // to window — rather than waiting for it to bubble back up through the
+    // whole page first.
     window.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleBlur);
     window.addEventListener("focus", handleFocus);
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handlePrintScreen);
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    window.addEventListener("keyup", handlePrintScreen, { capture: true });
     window.addEventListener("beforeprint", handleBeforePrint);
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("copy", handleCopy);
@@ -168,8 +225,8 @@ export default function ContentProtection({ children, projectId, enabled = true 
       window.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleBlur);
       window.removeEventListener("focus", handleFocus);
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handlePrintScreen);
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+      window.removeEventListener("keyup", handlePrintScreen, { capture: true });
       window.removeEventListener("beforeprint", handleBeforePrint);
       document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("copy", handleCopy);
@@ -179,15 +236,25 @@ export default function ContentProtection({ children, projectId, enabled = true 
   }, [enabled, showWarning, handleSuspiciousActivity]);
 
   const resume = () => {
+    releaseBlurNow();
     setShowWarning(false);
     setIsBlurred(false);
   };
 
   return (
     <div className="relative">
+      {/* No transition/duration classes here on purpose: this element also
+          gets its blur set directly (see engageBlurNow/releaseBlurNow above)
+          the instant a threat is detected, and a CSS transition would mean
+          the content ramps from clear to blurred over ~300ms instead of
+          snapping — precisely the window a screenshot could land in. The
+          isBlurred-driven className/style below keep the same protected
+          state applied across React re-renders (e.g. if this component
+          re-renders for an unrelated reason while still blurred). */}
       <div
-        className={`transition-all duration-300 ${isBlurred ? "blur-xl select-none pointer-events-none" : ""}`}
-        style={isBlurred ? { WebkitFilter: 'blur(20px)' } : {}}
+        ref={protectedRef}
+        className={isBlurred ? "blur-xl select-none pointer-events-none" : ""}
+        style={isBlurred ? { filter: INSTANT_BLUR_STYLE, WebkitFilter: INSTANT_BLUR_STYLE } : {}}
       >
         {children}
       </div>
