@@ -824,10 +824,21 @@ export async function updateProject(id: number, data: Partial<{
   await db.update(projects).set({ ...patch, updatedAt: new Date() }).where(eq(projects.id, id));
 }
 
-/** Deletes a project together with its bookmarks, download requests, and edit requests. */
+/**
+ * Deletes a project together with its bookmarks, download requests, and edit
+ * requests. `bookmarks.projectId`, `downloadRequests.projectId`, and
+ * `editRequests.projectId` are all declared `onDelete: "cascade"` in
+ * drizzle/schema.ts, so MySQL removes those rows by itself the moment the
+ * project row is deleted — a single query is enough on the real database.
+ * (Deleting them one-by-one first used to also work, but meant 4 sequential
+ * round-trips to the database instead of 1, which is 4x the exposure to any
+ * connection hiccup for no benefit.)
+ */
 export async function deleteProject(id: number) {
   const db = await getDb();
   if (!db) {
+    // The local JSON fallback has no real foreign keys, so it still has to
+    // clean up each related table by hand.
     const store = loadLocalDb();
     store.projects = store.projects.filter(p => p.id !== id);
     store.bookmarks = store.bookmarks.filter(b => b.projectId !== id);
@@ -836,9 +847,6 @@ export async function deleteProject(id: number) {
     saveLocalDb();
     return;
   }
-  await db.delete(bookmarks).where(eq(bookmarks.projectId, id));
-  await db.delete(downloadRequests).where(eq(downloadRequests.projectId, id));
-  await db.delete(editRequests).where(eq(editRequests.projectId, id));
   await db.delete(projects).where(eq(projects.id, id));
 }
 
