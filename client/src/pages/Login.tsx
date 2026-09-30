@@ -8,9 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import type { LoginPortal } from "@shared/const";
 import { TRPCClientError } from "@trpc/client";
-import { AlertCircle, BookUser, Check, GraduationCap, Library, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowRight, BookUser, Check, Eye, EyeOff, GraduationCap, KeyRound, Library, Loader2, UserCircle2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 const PORTALS: Record<LoginPortal, { label: string; title: string; icon: typeof GraduationCap; can: string[] }> = {
   student: {
@@ -47,6 +48,7 @@ export default function Login() {
   });
   const [schoolId, setSchoolId] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async () => {
@@ -83,14 +85,17 @@ export default function Login() {
 
   return (
     <AuthBackground>
-      <Card className="w-full max-w-md shadow-xl border-border/50 backdrop-blur-sm bg-card/95">
-        <CardHeader className="text-center pb-2">
+      <Card className="w-full max-w-md shadow-2xl border-white/40 bg-card/95 backdrop-blur-md py-0 overflow-hidden">
+        <CardHeader className="text-center pt-8 pb-2">
+          <div className="mx-auto mb-3 h-20 w-20 rounded-full ring-4 ring-[#c9a227]/70 shadow-lg overflow-hidden">
+            <img src="/logo.jpg" alt="Golden West Colleges seal" className="h-full w-full object-cover" />
+          </div>
           <CardTitle className="text-2xl font-bold tracking-tight text-foreground">
             Sign in to the Capstone Archive
           </CardTitle>
-          <CardDescription className="text-sm mt-1 text-muted-foreground">Choose your role</CardDescription>
+          <CardDescription className="text-sm mt-1 text-muted-foreground">Choose your role to continue</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-5 pt-2">
+        <CardContent className="space-y-5 pt-4 pb-8">
           {errorMessage && (
             <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
               <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
@@ -99,25 +104,35 @@ export default function Login() {
           )}
 
           <Tabs value={portal} onValueChange={v => setPortal(v as LoginPortal)}>
-            <TabsList className="grid w-full grid-cols-3">
-              {(Object.keys(PORTALS) as LoginPortal[]).map(p => (
-                <TabsTrigger key={p} value={p}>{PORTALS[p].label}</TabsTrigger>
-              ))}
+            <TabsList className="grid w-full grid-cols-3 h-auto bg-muted/70 p-1.5 rounded-xl gap-1">
+              {(Object.keys(PORTALS) as LoginPortal[]).map(p => {
+                const Icon = PORTALS[p].icon;
+                return (
+                  <TabsTrigger
+                    key={p}
+                    value={p}
+                    className="flex-col gap-1 h-auto py-2.5 rounded-lg text-muted-foreground data-[state=active]:bg-[#1a3a6b] data-[state=active]:text-white data-[state=active]:shadow-md"
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="text-xs font-semibold">{PORTALS[p].label}</span>
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
 
             {(Object.keys(PORTALS) as LoginPortal[]).map(p => {
               const info = PORTALS[p];
               const Icon = info.icon;
               return (
-                <TabsContent key={p} value={p} className="space-y-4 pt-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                      <Icon className="h-6 w-6 text-primary" />
+                <TabsContent key={p} value={p} className="space-y-4 pt-4">
+                  <div className="flex items-center gap-3 rounded-xl bg-[#1a3a6b]/5 border border-[#1a3a6b]/10 p-3">
+                    <div className="h-11 w-11 rounded-lg bg-[#1a3a6b] flex items-center justify-center shrink-0">
+                      <Icon className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <h2 className="font-semibold text-foreground">{info.title}</h2>
+                      <h2 className="font-semibold text-foreground text-sm">{info.title}</h2>
                       <ul className="text-xs text-muted-foreground space-y-0.5 mt-1">
-                        {info.can.map(c => <li key={c} className="flex items-center gap-1.5"><Check className="h-3 w-3 text-primary" />{c}</li>)}
+                        {info.can.map(c => <li key={c} className="flex items-center gap-1.5"><Check className="h-3 w-3 text-[#c9a227]" />{c}</li>)}
                       </ul>
                     </div>
                   </div>
@@ -125,30 +140,56 @@ export default function Login() {
                   <form className="space-y-3" onSubmit={handleSubmit}>
                     <div className="space-y-1.5">
                       <Label htmlFor={`schoolId-${p}`}>School ID Number</Label>
-                      <Input
-                        id={`schoolId-${p}`}
-                        required
-                        autoComplete="username"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={schoolId}
-                        onChange={e => setSchoolId(digitsOnly(e.target.value))}
-                        placeholder="e.g. 202400123"
-                      />
+                      <div className="relative">
+                        <UserCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id={`schoolId-${p}`}
+                          required
+                          autoComplete="username"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={schoolId}
+                          onChange={e => setSchoolId(digitsOnly(e.target.value))}
+                          placeholder="e.g. 202400123"
+                          className="pl-9"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor={`password-${p}`}>Password</Label>
-                      <Input
-                        id={`password-${p}`}
-                        type="password"
-                        required
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                      />
+                      <div className="relative">
+                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id={`password-${p}`}
+                          type={showPassword ? "text" : "password"}
+                          required
+                          autoComplete="current-password"
+                          value={password}
+                          onChange={e => setPassword(e.target.value)}
+                          className="pl-9 pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(v => !v)}
+                          className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          tabIndex={-1}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
-                    <Button type="submit" className="w-full h-11" disabled={loginMutation.isPending}>
-                      {loginMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : `Sign in as ${info.label}`}
+                    <Button
+                      type="submit"
+                      className="w-full h-11 gap-2 bg-[#1a3a6b] hover:bg-[#153059] text-white"
+                      disabled={loginMutation.isPending}
+                    >
+                      {loginMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                        <>
+                          Sign in as {info.label}
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
                     </Button>
                   </form>
                 </TabsContent>
@@ -156,8 +197,8 @@ export default function Login() {
             })}
           </Tabs>
         </CardContent>
-        <CardFooter className="justify-center text-sm text-muted-foreground">
-          Don&apos;t have an account?&nbsp;<Link href={`/signup?portal=${portal}`} className="font-medium text-primary hover:underline">Sign up</Link>
+        <CardFooter className="justify-center text-sm text-muted-foreground bg-muted/40 py-4 border-t">
+          Don&apos;t have an account?&nbsp;<Link href={`/signup?portal=${portal}`} className="font-medium text-[#1a3a6b] hover:underline">Sign up</Link>
         </CardFooter>
       </Card>
     </AuthBackground>
