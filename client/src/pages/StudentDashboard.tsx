@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import StatCard from "@/components/dashboard/StatCard";
 import ContentProtection from "@/components/ContentProtection";
+import PageHero from "@/components/PageHero";
 
 const REQUEST_STATUS = {
   pending: { label: "Waiting for approval", icon: Clock, className: "bg-amber-100 text-amber-800 border-amber-200" },
@@ -32,13 +33,12 @@ export default function StudentDashboard() {
 
   return (
     <ContentProtection enabled>
-      <div className="min-h-[calc(100vh-4rem)] py-8">
-        <div className="container space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Welcome, {user?.name || "Student"}</h1>
-            <p className="text-muted-foreground">Student Dashboard — find and read capstone projects from the archive.</p>
-          </div>
-
+      <div className="min-h-[calc(100vh-4rem)]">
+        <PageHero
+          title={`Welcome, ${user?.name || "Student"}`}
+          subtitle="Student Dashboard — find and read capstone projects from the archive."
+        />
+        <div className="container py-8 space-y-6">
           <form
             className="flex gap-2"
             onSubmit={e => {

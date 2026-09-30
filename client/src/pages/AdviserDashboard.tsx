@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import StatCard from "@/components/dashboard/StatCard";
+import PageHero from "@/components/PageHero";
 
 const STATUS = {
   pending: { label: "Under review", className: "bg-amber-100 text-amber-800 border-amber-200" },
@@ -23,18 +24,17 @@ export default function AdviserDashboard() {
   const needsChanges = mine?.filter(p => p.status === "rejected") ?? [];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
-      <div className="container space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Adviser Dashboard</h1>
-            <p className="text-muted-foreground">Welcome, {user?.name || "Adviser"}. Upload capstones and follow their review by the librarian.</p>
-          </div>
+    <div className="min-h-[calc(100vh-4rem)]">
+      <PageHero
+        title="Adviser Dashboard"
+        subtitle={`Welcome, ${user?.name || "Adviser"}. Upload capstones and follow their review by the librarian.`}
+        actions={
           <Link href="/upload" className="no-underline">
-            <Button className="gap-2"><Upload className="h-4 w-4" /> Upload Capstone</Button>
+            <Button className="gap-2 bg-[#c9a227] hover:bg-[#b8931f] text-[#1a3a6b] font-semibold"><Upload className="h-4 w-4" /> Upload Capstone</Button>
           </Link>
-        </div>
-
+        }
+      />
+      <div className="container py-8 space-y-6">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="My Uploads" value={mine?.length ?? 0} icon={FileText} color="bg-primary" href="/my-submissions" />
           <StatCard label="Under Review" value={count("pending")} icon={Clock} color="bg-amber-500" href="/my-submissions" />

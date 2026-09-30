@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import StudentDashboard from "./StudentDashboard";
 import AdviserDashboard from "./AdviserDashboard";
+import PageHero from "@/components/PageHero";
 import { Link } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -70,13 +71,9 @@ export default function Dashboard() {
       ];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
-      <div className="container">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Librarian Dashboard</h1>
-          <p className="text-muted-foreground">Overview of the Capstone Archive system</p>
-        </div>
-
+    <div className="min-h-[calc(100vh-4rem)]">
+      <PageHero title="Librarian Dashboard" subtitle="Overview of the Capstone Archive system" />
+      <div className="container py-8">
         {/* Stats Cards */}
         {statsLoading ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
