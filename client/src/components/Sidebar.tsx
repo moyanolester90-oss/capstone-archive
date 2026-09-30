@@ -45,10 +45,10 @@ export default function Sidebar() {
     <Link key={it.href} href={it.href} className="no-underline">
       <div
         className={cn(
-          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+          "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors",
           location === it.href
-            ? "bg-[#c9a227]/15 text-[#1a3a6b] border-l-4 border-[#c9a227] pl-[8px]"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground border-l-4 border-transparent pl-[8px]"
+            ? "bg-[#c9a227] text-[#1a3a6b] font-semibold shadow-sm"
+            : "text-[#1a3a6b]/80 hover:bg-[#1a3a6b]/5 hover:text-[#1a3a6b]"
         )}
       >
         <it.icon className="h-4 w-4 shrink-0" />
@@ -58,7 +58,7 @@ export default function Sidebar() {
   );
 
   return (
-    <aside className="hidden lg:flex lg:flex-col fixed left-0 top-20 bottom-0 w-64 border-r bg-background overflow-y-auto py-4 px-3 z-40">
+    <aside className="hidden lg:flex lg:flex-col fixed left-0 top-20 bottom-0 w-64 border-r bg-white/90 backdrop-blur-sm overflow-y-auto py-4 px-3 z-40">
       <nav className="flex flex-col gap-1">
         {mainItems.map(item)}
       </nav>

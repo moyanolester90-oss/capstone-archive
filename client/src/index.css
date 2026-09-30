@@ -83,7 +83,7 @@
     @apply text-foreground font-sans;
     background-color: var(--color-background);
     background-image:
-      linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)),
+      linear-gradient(rgba(230, 240, 252, 0.85), rgba(230, 240, 252, 0.85)),
       url("/campus-bg.png");
     background-size: cover;
     background-position: center top;

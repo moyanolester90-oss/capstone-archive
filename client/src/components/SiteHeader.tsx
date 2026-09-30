@@ -82,8 +82,18 @@ export default function SiteHeader() {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-gradient-to-r from-[#0b1830] via-[#153567] to-[#0b1830] shadow-md">
-      <div className="container flex h-20 items-center justify-between gap-2">
+    <header className="sticky top-0 z-50 w-full bg-gradient-to-r from-[#0b1830] via-[#153567] to-[#0b1830] shadow-md overflow-hidden">
+      {/* Gold diagonal accent band, top-right */}
+      <svg
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        preserveAspectRatio="none"
+        viewBox="0 0 1440 96"
+      >
+        <polygon points="1000,0 1200,0 900,96 700,96" fill="#c9a227" fillOpacity="0.55" />
+        <polygon points="1150,0 1260,0 1020,96 910,96" fill="#f3d77a" fillOpacity="0.35" />
+      </svg>
+      <div className="container relative flex h-20 items-center justify-between gap-2">
         <Link href="/" className="flex items-center gap-3 no-underline shrink-0">
           <div className="h-14 w-14 shrink-0 rounded-full shadow-sm ring-2 ring-[#c9a227]/70 overflow-hidden">
             <img
