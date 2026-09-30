@@ -1,5 +1,6 @@
 import { eq, and, desc, like, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import {
   InsertUser, users, categories, projects, bookmarks, downloadRequests, editRequests, activityLogs, advisers,
   type Category, type Project, type Bookmark, type DownloadRequest, type EditRequest, type ActivityLog, type Adviser,
@@ -17,7 +18,21 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      // A remote host (e.g. Hostinger) silently drops connections that sit
+      // idle for a few minutes. The default pool doesn't notice until a
+      // query tries to reuse a dead connection and fails with ETIMEDOUT or
+      // "connection lost" — which is exactly what looked like a random
+      // "Failed query" after a few minutes of inactivity. `enableKeepAlive`
+      // sends periodic TCP keep-alive packets so idle connections stay open,
+      // and a short `connectTimeout` means a genuinely dead connection fails
+      // fast (and gets replaced) instead of hanging.
+      const pool = mysql.createPool({
+        uri: process.env.DATABASE_URL,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 10_000,
+        connectTimeout: 10_000,
+      });
+      _db = drizzle(pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
