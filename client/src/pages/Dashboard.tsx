@@ -44,7 +44,7 @@ export default function Dashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
         <Card><CardContent className="pt-6"><p className="text-muted-foreground mb-4">Please login to access the dashboard.</p><Link href="/login">Login</Link></CardContent></Card>
       </div>
     );
@@ -71,7 +71,7 @@ export default function Dashboard() {
       ];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)]">
+    <div className="min-h-[calc(100vh-5rem)]">
       <PageHero title="Librarian Dashboard" subtitle="Overview of the Capstone Archive system" />
       <div className="container py-8">
         {/* Stats Cards */}

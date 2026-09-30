@@ -49,7 +49,7 @@ export default function CategoryManagement() {
 
   if (!isAuthenticated || user?.role !== 'admin') {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
         <Card><CardContent className="pt-6 text-center">
           <p className="text-muted-foreground mb-4">Admin access required.</p>
           <Link href="/"><Button>Go Home</Button></Link>
@@ -59,7 +59,7 @@ export default function CategoryManagement() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
+    <div className="min-h-[calc(100vh-5rem)] py-8">
       <div className="container max-w-3xl">
         <div className="flex items-center justify-between mb-6">
           <div>

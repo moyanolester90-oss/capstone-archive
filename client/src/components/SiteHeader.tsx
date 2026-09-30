@@ -4,7 +4,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
-  Home, BookOpen, Upload, Star, LayoutDashboard, FileText,
+  BookOpen, Upload, Star, LayoutDashboard, FileText,
   FolderOpen, Tags, Users, Download, Activity, LogIn, LogOut, Menu, ScanLine, UserCircle, PencilLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,8 +19,11 @@ export default function SiteHeader() {
   const canUpload = isAdmin || isAdviser;
   const roleLabel = isAdmin ? "Librarian" : isAdviser ? "Adviser" : isAuthenticated ? "Student" : null;
 
+  // "Home" is intentionally not a nav item — the logo/wordmark on the left
+  // already links to "/". Logged-in users get this same list in the left
+  // Sidebar (desktop) and here in the phone/tablet menu (mobile); logged-out
+  // visitors just get "Browse" in both places.
   const mainItems = [
-    { href: "/", label: "Home", icon: Home },
     ...(isAuthenticated ? [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/browse", label: "Browse", icon: BookOpen },
@@ -55,7 +58,7 @@ export default function SiteHeader() {
   // `dark` styles the button for the navy desktop bar (light text). The mobile/sidebar
   // Sheet menu has a plain light background, so it always uses the normal light-mode
   // styling — otherwise those links render as white-on-white and look like they vanished.
-  const navButton = (item: { href: string; label: string; icon: typeof Home }, full = false, dark = false) => (
+  const navButton = (item: { href: string; label: string; icon: typeof BookOpen }, full = false, dark = false) => (
     <Link key={item.href} href={item.href} className="no-underline" onClick={() => setMenuOpen(false)}>
       <Button
         variant="ghost"
@@ -80,9 +83,9 @@ export default function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-gradient-to-r from-[#0b1830] via-[#153567] to-[#0b1830] shadow-md">
-      <div className="container flex h-16 items-center justify-between gap-2">
-        <Link href="/" className="flex items-center gap-2 no-underline shrink-0">
-          <div className="h-11 w-11 shrink-0 rounded-full shadow-sm ring-2 ring-[#c9a227]/70 overflow-hidden">
+      <div className="container flex h-20 items-center justify-between gap-2">
+        <Link href="/" className="flex items-center gap-3 no-underline shrink-0">
+          <div className="h-14 w-14 shrink-0 rounded-full shadow-sm ring-2 ring-[#c9a227]/70 overflow-hidden">
             <img
               src="/logo.jpg"
               alt="Golden West Colleges seal"
@@ -95,15 +98,19 @@ export default function SiteHeader() {
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold text-white leading-tight tracking-wide">Capstone Archive</span>
-            <span className="text-[10px] text-[#f3d77a] font-semibold leading-tight tracking-[0.15em] uppercase">Golden West Colleges, Inc.</span>
+            <span className="text-xl font-bold text-white leading-tight tracking-wide">Capstone Archive</span>
+            <span className="text-xs text-[#f3d77a] font-semibold leading-tight tracking-[0.15em] uppercase">Golden West Colleges, Inc.</span>
           </div>
         </Link>
 
-        {/* Full navigation on wide screens (admins have many links, so they get it only on extra-wide screens) */}
-        <nav className={cn("hidden items-center gap-1", isAdmin ? "2xl:flex" : isAdviser ? "xl:flex" : "lg:flex")}>
-          {[...mainItems, ...adminItems].map(item => navButton(item, false, true))}
-        </nav>
+        {/* Logged-out visitors get a simple "Browse" link on wide screens. Logged-in
+            users get their full nav in the left Sidebar instead (see Sidebar.tsx) —
+            so there's nothing to show here for them above the sidebar's own breakpoint. */}
+        {!isAuthenticated && (
+          <nav className="hidden lg:flex items-center gap-1">
+            {mainItems.map(item => navButton(item, false, true))}
+          </nav>
+        )}
 
         <div className="flex items-center gap-1 sm:gap-2">
           {isAuthenticated && user && <NotificationBell userId={user.id} />}
@@ -144,7 +151,7 @@ export default function SiteHeader() {
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn("text-white hover:bg-white/10 hover:text-white", isAdmin ? "2xl:hidden" : isAdviser ? "xl:hidden" : "lg:hidden")}
+                className="text-white hover:bg-white/10 hover:text-white lg:hidden"
                 aria-label="Open menu"
               >
                 <Menu className="h-5 w-5" />

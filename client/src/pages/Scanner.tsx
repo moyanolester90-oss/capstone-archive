@@ -312,12 +312,12 @@ export default function Scanner() {
   );
 
   if (loading) {
-    return <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    return <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   if (!isAuthenticated || !isAdmin) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <CardTitle>Librarian Only</CardTitle>
@@ -330,7 +330,7 @@ export default function Scanner() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
+    <div className="min-h-[calc(100vh-5rem)] py-8">
       <div className="container max-w-5xl space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2"><ScanLine className="h-8 w-8 text-primary" /> Document Scanner</h1>

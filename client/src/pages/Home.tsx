@@ -170,13 +170,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 border-t border-border/50 bg-[#0b1830] text-white/70">
-        <div className="container text-center text-sm">
-          <p>&copy; {new Date().getFullYear()} Golden West Colleges, Inc. — Capstone Archive Management System</p>
-          <p className="mt-1">BSIT Department</p>
-        </div>
-      </footer>
     </div>
   );
 }

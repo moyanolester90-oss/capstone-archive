@@ -24,7 +24,7 @@ export default function AdviserDashboard() {
   const needsChanges = mine?.filter(p => p.status === "rejected") ?? [];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)]">
+    <div className="min-h-[calc(100vh-5rem)]">
       <PageHero
         title="Adviser Dashboard"
         subtitle={`Welcome, ${user?.name || "Adviser"}. Upload capstones and follow their review by the librarian.`}

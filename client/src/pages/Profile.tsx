@@ -80,7 +80,7 @@ export default function Profile() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-6">
             <p className="text-muted-foreground mb-4">Please login to view your account settings.</p>
@@ -117,7 +117,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
+    <div className="min-h-[calc(100vh-5rem)] py-8">
       <div className="container max-w-2xl space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Account Settings</h1>

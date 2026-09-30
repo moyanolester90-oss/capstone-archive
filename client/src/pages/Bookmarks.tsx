@@ -19,7 +19,7 @@ export default function Bookmarks() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardContent className="pt-6">
             <p className="text-muted-foreground mb-4">Please login to view your bookmarks.</p>
@@ -31,7 +31,7 @@ export default function Bookmarks() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
+    <div className="min-h-[calc(100vh-5rem)] py-8">
       <div className="container max-w-4xl">
         <ContentProtection enabled={isStudent}>
         <Watermark>

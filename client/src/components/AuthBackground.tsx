@@ -14,7 +14,7 @@ import { FileText, Search, Users } from "lucide-react";
  */
 export default function AuthBackground({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative isolate min-h-[calc(100vh-4rem)] overflow-hidden bg-gradient-to-br from-[#0b1830] via-[#153567] to-[#1a3a6b]">
+    <div className="relative isolate min-h-[calc(100vh-5rem)] overflow-hidden bg-gradient-to-br from-[#0b1830] via-[#153567] to-[#1a3a6b]">
       {/* Oversized, faint seal watermark — the same /logo.jpg used as the
           site-wide watermark, just brightened for a dark background. */}
       <div
@@ -34,7 +34,7 @@ export default function AuthBackground({ children }: { children: React.ReactNode
       <div className="pointer-events-none absolute -top-24 -right-20 h-96 w-96 rounded-full bg-[#c9a227]/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-[#2a5599]/40 blur-3xl" />
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col items-center justify-center gap-10 px-4 py-12 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-6xl flex-col items-center justify-center gap-10 px-4 py-12 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
         {/* Left branding panel — hidden on small screens, shown alongside the card on wide ones */}
         <div className="hidden w-full max-w-md shrink-0 text-white lg:block">
           <div className="mb-4 flex items-center gap-2">

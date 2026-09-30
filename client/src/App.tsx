@@ -4,6 +4,8 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { cn } from "@/lib/utils";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -22,6 +24,8 @@ import DownloadRequests from "./pages/DownloadRequests";
 import EditRequests from "./pages/EditRequests";
 import ActivityLogs from "./pages/ActivityLogs";
 import SiteHeader from "./components/SiteHeader";
+import Sidebar from "./components/Sidebar";
+import Footer from "./components/Footer";
 import PageBackground from "./components/PageBackground";
 
 function Router() {
@@ -51,14 +55,25 @@ function Router() {
 }
 
 function App() {
+  const { isAuthenticated } = useAuth();
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <PageBackground />
           <Toaster />
-          <SiteHeader />
-          <Router />
+          <div className="flex min-h-screen flex-col">
+            <SiteHeader />
+            <div className="flex flex-1">
+              {isAuthenticated && <Sidebar />}
+              <div className={cn("flex-1 min-w-0 flex flex-col", isAuthenticated && "lg:pl-64")}>
+                <main className="flex-1">
+                  <Router />
+                </main>
+                <Footer />
+              </div>
+            </div>
+          </div>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

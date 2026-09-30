@@ -48,7 +48,7 @@ export default function Browse() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
+    <div className="min-h-[calc(100vh-5rem)] py-8">
       <div className="container">
         <ContentProtection enabled={isStudent}>
         <Watermark>
@@ -64,12 +64,12 @@ export default function Browse() {
             <div className="space-y-4">
               {/* Keyword Search */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#1a3a6b]" />
                 <Input
                   placeholder="Search by title or keywords..."
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-11 h-12 text-base bg-white border-2 border-[#1a3a6b]/20 shadow-sm focus-visible:border-[#1a3a6b] focus-visible:ring-[#c9a227]/40"
                 />
               </div>
 

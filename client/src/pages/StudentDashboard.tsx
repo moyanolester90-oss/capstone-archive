@@ -33,7 +33,7 @@ export default function StudentDashboard() {
 
   return (
     <ContentProtection enabled>
-      <div className="min-h-[calc(100vh-4rem)]">
+      <div className="min-h-[calc(100vh-5rem)]">
         <PageHero
           title={`Welcome, ${user?.name || "Student"}`}
           subtitle="Student Dashboard — find and read capstone projects from the archive."
@@ -47,10 +47,15 @@ export default function StudentDashboard() {
             }}
           >
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input className="pl-9 h-11" placeholder="Search capstones by title or keyword..." value={query} onChange={e => setQuery(e.target.value)} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#1a3a6b]" />
+              <Input
+                className="pl-11 h-12 text-base bg-white border-2 border-[#1a3a6b]/20 shadow-sm focus-visible:border-[#1a3a6b] focus-visible:ring-[#c9a227]/40"
+                placeholder="Search capstones by title or keyword..."
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+              />
             </div>
-            <Button type="submit" className="h-11">Search</Button>
+            <Button type="submit" className="h-12 px-6 bg-[#1a3a6b] hover:bg-[#153059] text-white">Search</Button>
           </form>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

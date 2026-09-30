@@ -12,6 +12,7 @@ import { AlertCircle, ArrowRight, BookUser, Check, Eye, EyeOff, GraduationCap, K
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useSecretReveal } from "@/hooks/useSecretReveal";
 
 const PORTALS: Record<LoginPortal, { label: string; title: string; icon: typeof GraduationCap; can: string[] }> = {
   student: {
@@ -42,6 +43,9 @@ export default function Login() {
   const [, navigate] = useLocation();
   const redirectPath = '/dashboard';
   const params = new URLSearchParams(window.location.search);
+  // Adviser and Librarian/Admin logins are hidden by default — only Student shows.
+  // Pressing Ctrl+Q reveals the other two portals (see useSecretReveal).
+  const staffRevealed = useSecretReveal();
   const [portal, setPortal] = useState<LoginPortal>(() => {
     const p = params.get("portal");
     return p === "adviser" || p === "admin" ? p : "student";
@@ -49,6 +53,16 @@ export default function Login() {
   const [schoolId, setSchoolId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const visiblePortals = (Object.keys(PORTALS) as LoginPortal[]).filter(p => p === "student" || staffRevealed);
+
+  // If the staff portals get hidden again (or the page loaded with one selected
+  // but not yet revealed), fall back to the Student tab rather than leaving a
+  // hidden portal silently selected.
+  useEffect(() => {
+    if (!staffRevealed && portal !== "student") {
+      setPortal("student");
+    }
+  }, [staffRevealed, portal]);
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async () => {
@@ -104,8 +118,11 @@ export default function Login() {
           )}
 
           <Tabs value={portal} onValueChange={v => setPortal(v as LoginPortal)}>
-            <TabsList className="grid w-full grid-cols-3 h-auto bg-muted/70 p-1.5 rounded-xl gap-1">
-              {(Object.keys(PORTALS) as LoginPortal[]).map(p => {
+            <TabsList
+              className="grid w-full h-auto bg-muted/70 p-1.5 rounded-xl gap-1"
+              style={{ gridTemplateColumns: `repeat(${visiblePortals.length}, minmax(0, 1fr))` }}
+            >
+              {visiblePortals.map(p => {
                 const Icon = PORTALS[p].icon;
                 return (
                   <TabsTrigger
@@ -119,8 +136,13 @@ export default function Login() {
                 );
               })}
             </TabsList>
+            {staffRevealed && (
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                Staff logins revealed. Press <kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Ctrl</kbd>+<kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Q</kbd> to hide them again.
+              </p>
+            )}
 
-            {(Object.keys(PORTALS) as LoginPortal[]).map(p => {
+            {visiblePortals.map(p => {
               const info = PORTALS[p];
               const Icon = info.icon;
               return (

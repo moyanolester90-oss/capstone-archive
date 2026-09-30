@@ -79,7 +79,7 @@ export default function ArchiveManagement() {
 
   if (!isAuthenticated || user?.role !== 'admin') {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
         <Card><CardContent className="pt-6 text-center">
           <p className="text-muted-foreground mb-4">Admin access required.</p>
           <Link href="/"><Button>Go Home</Button></Link>
@@ -91,7 +91,7 @@ export default function ArchiveManagement() {
   const filteredProjects = allProjects?.filter(p => filter === "all" || p.status === filter) || [];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
+    <div className="min-h-[calc(100vh-5rem)] py-8">
       <div className="container">
         <div className="flex items-center justify-between mb-6">
           <div>

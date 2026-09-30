@@ -15,7 +15,7 @@ export default function UploadPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -23,7 +23,7 @@ export default function UploadPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <CardTitle>Login Required</CardTitle>
@@ -42,7 +42,7 @@ export default function UploadPage() {
 
   if (user?.role !== 'admin' && user?.role !== 'adviser') {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <CardTitle>Advisers and Librarian Only</CardTitle>
@@ -61,7 +61,7 @@ export default function UploadPage() {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
+    <div className="min-h-[calc(100vh-5rem)] py-8">
       <div className="container max-w-2xl">
         <h1 className="text-3xl font-bold text-foreground mb-2">Upload Capstone Project</h1>
         <p className="text-muted-foreground mb-8">

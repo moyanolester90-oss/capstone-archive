@@ -13,6 +13,7 @@ import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { PASSWORD_MIN_LENGTH, PASSWORD_PATTERN, YEAR_LEVELS } from "@shared/validation";
 import { cn } from "@/lib/utils";
+import { useSecretReveal } from "@/hooks/useSecretReveal";
 
 type SignupTab = "student" | "staff";
 type StaffRole = "adviser" | "admin";
@@ -64,8 +65,18 @@ export default function Signup() {
   const { isAuthenticated, refresh } = useAuth();
   const [, navigate] = useLocation();
   const params = new URLSearchParams(window.location.search);
+  // Adviser/Librarian account creation is hidden by default — same Ctrl+Q
+  // shortcut used on the Login page reveals the "Adviser / Librarian" tab.
+  const staffRevealed = useSecretReveal();
   const [tab, setTab] = useState<SignupTab>(() => (params.get("portal") === "student" ? "student" : params.get("portal") === "adviser" || params.get("portal") === "admin" ? "staff" : "student"));
   const [staffRole, setStaffRole] = useState<StaffRole>(() => (params.get("portal") === "admin" ? "admin" : "adviser"));
+
+  // If staff signup gets hidden again while it was the active tab, fall back to Student.
+  useEffect(() => {
+    if (!staffRevealed && tab !== "student") {
+      setTab("student");
+    }
+  }, [staffRevealed, tab]);
 
   // Student fields
   const [studentId, setStudentId] = useState("");
@@ -213,10 +224,17 @@ export default function Signup() {
           )}
 
           <Tabs value={tab} onValueChange={v => { setTab(v as SignupTab); setFormError(null); }}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className={cn("grid w-full", staffRevealed ? "grid-cols-2" : "grid-cols-1")}>
               <TabsTrigger value="student"><GraduationCap className="h-4 w-4 mr-1.5" />Student</TabsTrigger>
-              <TabsTrigger value="staff"><Library className="h-4 w-4 mr-1.5" />Adviser / Librarian</TabsTrigger>
+              {staffRevealed && (
+                <TabsTrigger value="staff"><Library className="h-4 w-4 mr-1.5" />Adviser / Librarian</TabsTrigger>
+              )}
             </TabsList>
+            {staffRevealed && (
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                Staff sign-up revealed. Press <kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Ctrl</kbd>+<kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Q</kbd> to hide it again.
+              </p>
+            )}
 
             <TabsContent value="student" className="pt-3">
               <form className="space-y-3" onSubmit={submitStudent}>
@@ -261,6 +279,7 @@ export default function Signup() {
               </form>
             </TabsContent>
 
+            {staffRevealed && (
             <TabsContent value="staff" className="pt-3">
               <form className="space-y-3" onSubmit={submitStaff}>
                 <div className="space-y-1.5">
@@ -320,6 +339,7 @@ export default function Signup() {
                 </Button>
               </form>
             </TabsContent>
+            )}
           </Tabs>
         </CardContent>
         <CardFooter className="justify-center text-sm text-muted-foreground">

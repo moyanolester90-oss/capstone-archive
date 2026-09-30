@@ -47,7 +47,7 @@ export default function MySubmissions() {
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -55,7 +55,7 @@ export default function MySubmissions() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <CardTitle>Login Required</CardTitle>
@@ -74,7 +74,7 @@ export default function MySubmissions() {
 
   if (!canUpload) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <CardTitle>Advisers and Librarian Only</CardTitle>
@@ -91,7 +91,7 @@ export default function MySubmissions() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
+    <div className="min-h-[calc(100vh-5rem)] py-8">
       <div className="container max-w-4xl">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
           <div>

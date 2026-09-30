@@ -63,7 +63,7 @@ export default function ProjectDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -71,7 +71,7 @@ export default function ProjectDetail() {
 
   if (!project) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-5rem)] flex flex-col items-center justify-center p-4">
         <BookOpen className="h-12 w-12 text-muted-foreground/40 mb-4" />
         <h2 className="text-xl font-semibold mb-2">Project Not Found</h2>
         <p className="text-muted-foreground mb-4">This project may not exist or hasn't been approved yet.</p>
@@ -107,7 +107,7 @@ export default function ProjectDetail() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] py-8">
+    <div className="min-h-[calc(100vh-5rem)] py-8">
       <div className="container max-w-4xl">
         <ContentProtection projectId={projectId} enabled={!isAdmin && !isOwner}>
         <Watermark>
