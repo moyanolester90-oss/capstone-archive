@@ -147,6 +147,36 @@ export type DownloadRequest = typeof downloadRequests.$inferSelect;
 export type InsertDownloadRequest = typeof downloadRequests.$inferInsert;
 
 /**
+ * Edit requests.
+ *
+ * A capstone adviser (host) is no longer allowed to edit, resubmit, or
+ * replace the file of a capstone project on their own say-so — they must
+ * first ask the librarian/admin for permission on that specific project.
+ * `projects.resubmit` (server/routers.ts) checks for an `approved` row here
+ * before letting an adviser's edit through; the librarian/admin is never
+ * gated by this table and can always edit any project directly.
+ *
+ * One row per adviser+project (mirrors `downloadRequests`): asking again
+ * after a rejection resets the same row back to `pending` rather than
+ * piling up duplicate requests.
+ */
+export const editRequests = mysqlTable("editRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  adminNote: text("adminNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => [
+  unique("editRequests_user_project_unique").on(t.userId, t.projectId),
+  index("editRequests_status_idx").on(t.status),
+]);
+
+export type EditRequest = typeof editRequests.$inferSelect;
+export type InsertEditRequest = typeof editRequests.$inferInsert;
+
+/**
  * Activity logs.
  */
 export const activityLogs = mysqlTable("activityLogs", {

@@ -153,6 +153,7 @@ describe("roles: students browse only, advisers upload for review, librarian pub
     await expect(studentCaller.projects.resubmit({ id: 1, ...validProject() })).rejects.toThrow(/advisers and the librarian/);
     await expect(studentCaller.projects.update({ id: 1, title: "Hack" })).rejects.toThrow();
     await expect(studentCaller.projects.delete({ id: 1 })).rejects.toThrow();
+    await expect(studentCaller.editRequests.create({ projectId: 1 })).rejects.toThrow(/only capstone advisers/i);
     // ...but they can browse and search
     await expect(studentCaller.projects.search({ query: "a" })).resolves.toBeInstanceOf(Array);
   });
@@ -193,6 +194,17 @@ describe("roles: students browse only, advisers upload for review, librarian pub
       appRouter.createCaller(ctxFor(otherAdviser)).projects.resubmit({ id: projectId!, ...validProject() })
     ).rejects.toThrow(/not found/i);
 
+    // the project's own adviser can't edit it either, without the librarian's approval first
+    await expect(
+      adviserCaller.projects.resubmit({ id: projectId!, ...validProject() })
+    ).rejects.toThrow(/approval/i);
+
+    // request permission, get approved, then the edit goes through
+    const { id: editReqId } = await adviserCaller.editRequests.create({ projectId: projectId! });
+    expect((await adminCaller.notifications.list()).some(n => n.title === "New edit permission request")).toBe(true);
+    await adminCaller.editRequests.approve({ id: editReqId! });
+    expect((await adviserCaller.notifications.list()).some(n => n.title === "Edit permission approved")).toBe(true);
+
     const oldFileKey = rejected.fileKey!;
     await adviserCaller.projects.resubmit({
       id: projectId!,
@@ -227,7 +239,7 @@ describe("roles: students browse only, advisers upload for review, librarian pub
 });
 
 describe("delete clean-up and category protection", () => {
-  it("deleting a project removes its file, bookmarks and download requests", async () => {
+  it("deleting a project removes its file, bookmarks, download requests and edit requests", async () => {
     const adviserCaller = appRouter.createCaller(ctxFor(adviser));
     const adminCaller = appRouter.createCaller(ctxFor(admin));
     const { projectId } = await adviserCaller.projects.create({
@@ -242,6 +254,7 @@ describe("delete clean-up and category protection", () => {
     await adminCaller.projects.approve({ id: projectId! });
     await appRouter.createCaller(ctxFor(otherStudent)).bookmarks.toggle({ projectId: projectId! });
     await appRouter.createCaller(ctxFor(otherStudent)).downloadRequests.create({ projectId: projectId! });
+    await adviserCaller.editRequests.create({ projectId: projectId! });
 
     const project = (await db.getProjectById(projectId!))!;
     const filePath = path.join(process.env.UPLOADS_DIR!, project.fileKey!);
@@ -253,6 +266,7 @@ describe("delete clean-up and category protection", () => {
     expect(fs.existsSync(filePath)).toBe(false);
     expect((await db.getUserBookmarks(otherStudent.id)).some(p => p.id === projectId)).toBe(false);
     expect((await db.getUserDownloadRequests(otherStudent.id)).some(r => r.projectId === projectId)).toBe(false);
+    expect((await db.getUserEditRequests(adviser.id)).some(r => r.projectId === projectId)).toBe(false);
   });
 
   it("a category that still has projects cannot be deleted", async () => {

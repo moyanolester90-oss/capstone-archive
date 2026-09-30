@@ -5,7 +5,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import {
   Users, FolderOpen, Upload, Download, Activity, BarChart3,
-  ArrowUpRight, Loader2, ScanLine,
+  ArrowUpRight, Loader2, ScanLine, PencilLine,
 } from "lucide-react";
 import StudentDashboard from "./StudentDashboard";
 import AdviserDashboard from "./AdviserDashboard";
@@ -190,6 +190,7 @@ export default function Dashboard() {
                 { label: "Categories", href: "/admin/categories", icon: FolderOpen },
                 { label: "Users", href: "/admin/users", icon: Users },
                 { label: "View Requests", href: "/admin/downloads", icon: Download },
+                { label: "Edit Requests", href: "/admin/edit-requests", icon: PencilLine },
                 { label: "Logs", href: "/admin/activities", icon: Activity },
               ].map((action, i) => (
                 <Link key={i} href={action.href} className="no-underline">

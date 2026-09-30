@@ -19,6 +19,7 @@ import ArchiveManagement from "./pages/ArchiveManagement";
 import CategoryManagement from "./pages/CategoryManagement";
 import UserManagement from "./pages/UserManagement";
 import DownloadRequests from "./pages/DownloadRequests";
+import EditRequests from "./pages/EditRequests";
 import ActivityLogs from "./pages/ActivityLogs";
 import SiteHeader from "./components/SiteHeader";
 import PageBackground from "./components/PageBackground";
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/admin/categories" component={CategoryManagement} />
       <Route path="/admin/users" component={UserManagement} />
       <Route path="/admin/downloads" component={DownloadRequests} />
+      <Route path="/admin/edit-requests" component={EditRequests} />
       <Route path="/admin/activities" component={ActivityLogs} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

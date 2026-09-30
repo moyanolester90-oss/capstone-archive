@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   Home, BookOpen, Upload, Star, LayoutDashboard, FileText,
-  FolderOpen, Tags, Users, Download, Activity, LogIn, LogOut, Menu, ScanLine, UserCircle,
+  FolderOpen, Tags, Users, Download, Activity, LogIn, LogOut, Menu, ScanLine, UserCircle, PencilLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -42,6 +42,7 @@ export default function SiteHeader() {
     { href: "/admin/categories", label: "Categories", icon: Tags },
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/downloads", label: "View Requests", icon: Download },
+    { href: "/admin/edit-requests", label: "Edit Requests", icon: PencilLine },
     { href: "/admin/activities", label: "Activity Logs", icon: Activity },
   ] : [];
 

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { AlertCircle, CheckCircle2, Clock, FileText, Loader2, LogIn, Pencil, Plus } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, FileText, Loader2, LogIn, Lock, Pencil, Plus, ShieldQuestion } from "lucide-react";
 import ProjectForm from "@/components/ProjectForm";
 
 const STATUS = {
@@ -19,7 +19,9 @@ const STATUS = {
 /** A student's own uploads: review status, rejection reason, and fix & resubmit. */
 export default function MySubmissions() {
   const { isAuthenticated, loading, user } = useAuth();
-  const canUpload = user?.role === "admin" || user?.role === "adviser";
+  const isAdmin = user?.role === "admin";
+  const isAdviser = user?.role === "adviser";
+  const canUpload = isAdmin || isAdviser;
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const [editing, setEditing] = useState<any>(null);
@@ -27,6 +29,21 @@ export default function MySubmissions() {
   const { data: projects, isLoading } = trpc.projects.mine.useQuery(undefined, { enabled: isAuthenticated && canUpload });
   const { data: categories } = trpc.categories.list.useQuery();
   const resubmit = trpc.projects.resubmit.useMutation();
+
+  // Advisers (never the librarian/admin) need the librarian's approval,
+  // per project, before they're allowed to edit/replace/resubmit anything —
+  // this drives which button each card below shows. The server enforces the
+  // same rule independently in `projects.resubmit`, so this is only the UI
+  // half of it, not the actual gate.
+  const { data: editRequests } = trpc.editRequests.myRequests.useQuery(undefined, { enabled: isAuthenticated && isAdviser });
+  const requestEdit = trpc.editRequests.create.useMutation({
+    onSuccess: () => {
+      toast.success("Edit permission requested. The librarian will review it.");
+      utils.editRequests.myRequests.invalidate();
+      utils.notifications.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message || "Failed to request edit permission"),
+  });
 
   if (loading) {
     return (
@@ -102,6 +119,10 @@ export default function MySubmissions() {
               const status = STATUS[project.status as keyof typeof STATUS] ?? STATUS.pending;
               const StatusIcon = status.icon;
               const category = categories?.find(c => c.id === project.categoryId);
+              // Admins/librarians are never gated. Advisers need an
+              // `approved` edit request on file for this exact project.
+              const editReq = isAdviser ? editRequests?.find(r => r.projectId === project.id) : undefined;
+              const canEditNow = isAdmin || editReq?.status === "approved";
               return (
                 <Card key={project.id} data-testid={`submission-${project.id}`}>
                   <CardContent className="p-5">
@@ -132,11 +153,40 @@ export default function MySubmissions() {
                       <p className="mt-3 text-sm text-muted-foreground">The librarian will review this soon. You can still make changes while it's waiting.</p>
                     )}
 
+                    {isAdviser && editReq?.status === "rejected" && (
+                      <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+                        <p className="font-medium">The librarian declined your request to edit this capstone.</p>
+                        {editReq.adminNote && <p className="whitespace-pre-wrap">{editReq.adminNote}</p>}
+                      </div>
+                    )}
+
                     <div className="mt-4">
-                      <Button variant={project.status === "rejected" ? "default" : "outline"} size="sm" className="gap-2" onClick={() => setEditing(project)}>
-                        <Pencil className="h-4 w-4" />
-                        {project.status === "rejected" ? "Fix & Resubmit" : project.status === "approved" ? "Update Capstone" : "Edit Submission"}
-                      </Button>
+                      {canEditNow ? (
+                        <Button variant={project.status === "rejected" ? "default" : "outline"} size="sm" className="gap-2" onClick={() => setEditing(project)}>
+                          <Pencil className="h-4 w-4" />
+                          {project.status === "rejected" ? "Fix & Resubmit" : project.status === "approved" ? "Update Capstone" : "Edit Submission"}
+                        </Button>
+                      ) : editReq?.status === "pending" ? (
+                        <Button variant="outline" size="sm" className="gap-2" disabled>
+                          <Clock className="h-4 w-4" /> Waiting for librarian's approval
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          disabled={requestEdit.isPending}
+                          onClick={() => requestEdit.mutate({ projectId: project.id })}
+                        >
+                          {requestEdit.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                          {editReq?.status === "rejected" ? "Request Permission Again" : "Request Permission to Edit"}
+                        </Button>
+                      )}
+                      {isAdviser && !canEditNow && !editReq && (
+                        <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+                          <ShieldQuestion className="h-3.5 w-3.5" /> You need the librarian's approval before editing, replacing, or updating this capstone.
+                        </p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

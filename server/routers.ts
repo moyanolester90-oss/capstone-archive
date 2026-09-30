@@ -23,6 +23,8 @@ import {
   searchProjects, createProject, updateProject, deleteProject,
   getUserBookmarks, toggleBookmark, getApprovedDownloadRequests, getUserDownloadRequests,
   createDownloadRequest, getAllDownloadRequests, getPendingDownloadRequests, updateDownloadRequest,
+  getApprovedEditRequests, getUserEditRequests, hasApprovedEditRequest,
+  createEditRequest, getAllEditRequests, getPendingEditRequests, updateEditRequest,
   createActivityLog, getAllActivityLogs, getRecentActivityLogs,
   getDashboardStats, getSchoolYears, getProjectCountsByCategory,
 } from "./db";
@@ -468,6 +470,12 @@ export const appRouter = router({
     /**
      * Lets a capstone adviser update a capstone they uploaded (fix a rejected one,
      * or update an approved one). The change goes back to the librarian for review.
+     *
+     * Advisers (never the librarian/admin) must first have an `approved` edit
+     * request on file for this exact project — see the `editRequests` router
+     * below. This is enforced here, server-side, not just hidden behind a
+     * disabled button in the UI: even a direct API call from an adviser
+     * without approval is refused.
      */
     resubmit: uploaderProcedure.input(projectFieldsSchema.extend({
       id: z.number(),
@@ -477,8 +485,17 @@ export const appRouter = router({
       if (!project || project.uploadedBy !== ctx.user!.id) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
       }
-      await assertCategoryExists(input.categoryId);
       const isAdmin = ctx.user!.role === 'admin';
+      if (!isAdmin) {
+        const approved = await hasApprovedEditRequest(ctx.user!.id, input.id);
+        if (!approved) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'You need the librarian\'s approval before editing, replacing, or updating this capstone. Request permission first.',
+          });
+        }
+      }
+      await assertCategoryExists(input.categoryId);
 
       const file = input.fileData ? await saveProjectFile(ctx.user!.id, input.fileData) : undefined;
       const { id, fileData, ...fields } = input;
@@ -662,6 +679,57 @@ export const appRouter = router({
     }),
   }),
 
+  // ============ EDIT REQUESTS ============
+  // A capstone adviser must get the librarian/admin's approval before they
+  // can edit, resubmit, or replace the file of a capstone they uploaded.
+  // `projects.resubmit` above is the actual enforcement point; this router
+  // is how an adviser asks and how the admin reviews/decides. The librarian/
+  // admin is never gated by this — they can always edit any project directly.
+  editRequests: router({
+    list: adminProcedure.query(() => getAllEditRequests()),
+    pending: adminProcedure.query(() => getPendingEditRequests()),
+    myApproved: protectedProcedure.query(({ ctx }) => getApprovedEditRequests(ctx.user!.id)),
+    myRequests: protectedProcedure.query(({ ctx }) => getUserEditRequests(ctx.user!.id)),
+    create: protectedProcedure.input(z.object({ projectId: z.number() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user!.role !== 'adviser') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only capstone advisers need to request edit permission; the librarian can always edit directly.' });
+      }
+      const project = await getProjectById(input.projectId);
+      if (!project || project.uploadedBy !== ctx.user!.id) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
+      }
+      const id = await createEditRequest(ctx.user!.id, input.projectId);
+      await createActivityLog({
+        userId: ctx.user!.id, action: 'edit_requested',
+        description: `Requested permission to edit project: ${project.title}`,
+        entityType: 'edit_request', entityId: id,
+      });
+      return { success: true, id };
+    }),
+    approve: adminProcedure.input(z.object({
+      id: z.number(), adminNote: z.string().max(500).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      await updateEditRequest(input.id, 'approved', input.adminNote);
+      await createActivityLog({
+        userId: ctx.user!.id, action: 'edit_approved',
+        description: `Approved edit request #${input.id}`,
+        entityType: 'edit_request', entityId: input.id,
+      });
+      return { success: true };
+    }),
+    reject: adminProcedure.input(z.object({
+      id: z.number(), adminNote: z.string().max(500).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      await updateEditRequest(input.id, 'rejected', input.adminNote);
+      await createActivityLog({
+        userId: ctx.user!.id, action: 'edit_rejected',
+        description: `Rejected edit request #${input.id}`,
+        entityType: 'edit_request', entityId: input.id,
+      });
+      return { success: true };
+    }),
+  }),
+
   // ============ NOTIFICATIONS ============
   notifications: router({
     /**
@@ -681,8 +749,8 @@ export const appRouter = router({
       const items: Notification[] = [];
 
       if (user.role === 'admin') {
-        const [pendingProjects, pendingDownloads] = await Promise.all([
-          getPendingProjects(), getPendingDownloadRequests(),
+        const [pendingProjects, pendingDownloads, pendingEdits] = await Promise.all([
+          getPendingProjects(), getPendingDownloadRequests(), getPendingEditRequests(),
         ]);
         for (const p of pendingProjects) {
           items.push({
@@ -704,10 +772,20 @@ export const appRouter = router({
             createdAt: new Date(d.updatedAt),
           });
         }
+        for (const e of pendingEdits) {
+          items.push({
+            id: `review-edit-${e.id}-${new Date(e.updatedAt).getTime()}`,
+            kind: 'info',
+            title: 'New edit permission request',
+            message: `Request #${e.id} is waiting for approval`,
+            href: '/admin/edit-requests',
+            createdAt: new Date(e.updatedAt),
+          });
+        }
       }
 
-      const [myProjects, myRequests, allProjects] = await Promise.all([
-        getProjectsByUploader(user.id), getUserDownloadRequests(user.id), getApprovedProjects(),
+      const [myProjects, myRequests, myEditRequests, allProjects] = await Promise.all([
+        getProjectsByUploader(user.id), getUserDownloadRequests(user.id), getUserEditRequests(user.id), getApprovedProjects(),
       ]);
       for (const p of myProjects) {
         if (p.status === 'pending') continue;
@@ -731,6 +809,21 @@ export const appRouter = router({
           title: approved ? 'Download request approved' : 'Download request declined',
           message: `${title}${!approved && r.adminNote ? ` — ${r.adminNote}` : ''}`,
           href: `/projects/${r.projectId}`,
+          createdAt: new Date(r.updatedAt),
+        });
+      }
+      for (const r of myEditRequests) {
+        if (r.status === 'pending') continue;
+        const approved = r.status === 'approved';
+        const title = myProjects.find(p => p.id === r.projectId)?.title
+          || allProjects.find(p => p.id === r.projectId)?.title
+          || `Project #${r.projectId}`;
+        items.push({
+          id: `edit-${r.id}-${r.status}-${new Date(r.updatedAt).getTime()}`,
+          kind: approved ? 'success' : 'error',
+          title: approved ? 'Edit permission approved' : 'Edit permission declined',
+          message: `${title}${!approved && r.adminNote ? ` — ${r.adminNote}` : ''}`,
+          href: '/my-submissions',
           createdAt: new Date(r.updatedAt),
         });
       }

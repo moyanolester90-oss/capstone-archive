@@ -1,8 +1,8 @@
 import { eq, and, desc, like, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
-  InsertUser, users, categories, projects, bookmarks, downloadRequests, activityLogs, advisers,
-  type Category, type Project, type Bookmark, type DownloadRequest, type ActivityLog, type Adviser,
+  InsertUser, users, categories, projects, bookmarks, downloadRequests, editRequests, activityLogs, advisers,
+  type Category, type Project, type Bookmark, type DownloadRequest, type EditRequest, type ActivityLog, type Adviser,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import fs from "node:fs";
@@ -56,12 +56,13 @@ interface LocalDbSchema {
   projects: any[];
   bookmarks: any[];
   downloadRequests: any[];
+  editRequests: any[];
   activityLogs: any[];
   advisers: any[];
 }
 
 const EMPTY_TABLES: LocalDbSchema = {
-  users: [], categories: [], projects: [], bookmarks: [], downloadRequests: [], activityLogs: [], advisers: [],
+  users: [], categories: [], projects: [], bookmarks: [], downloadRequests: [], editRequests: [], activityLogs: [], advisers: [],
 };
 
 /**
@@ -800,7 +801,7 @@ export async function updateProject(id: number, data: Partial<{
   await db.update(projects).set({ ...patch, updatedAt: new Date() }).where(eq(projects.id, id));
 }
 
-/** Deletes a project together with its bookmarks and download requests. */
+/** Deletes a project together with its bookmarks, download requests, and edit requests. */
 export async function deleteProject(id: number) {
   const db = await getDb();
   if (!db) {
@@ -808,11 +809,13 @@ export async function deleteProject(id: number) {
     store.projects = store.projects.filter(p => p.id !== id);
     store.bookmarks = store.bookmarks.filter(b => b.projectId !== id);
     store.downloadRequests = store.downloadRequests.filter(d => d.projectId !== id);
+    store.editRequests = store.editRequests.filter(e => e.projectId !== id);
     saveLocalDb();
     return;
   }
   await db.delete(bookmarks).where(eq(bookmarks.projectId, id));
   await db.delete(downloadRequests).where(eq(downloadRequests.projectId, id));
+  await db.delete(editRequests).where(eq(editRequests.projectId, id));
   await db.delete(projects).where(eq(projects.id, id));
 }
 
@@ -956,6 +959,104 @@ export async function updateDownloadRequest(id: number, status: 'approved' | 're
     return;
   }
   await db.update(downloadRequests).set({ status, adminNote: adminNote || null, updatedAt: new Date() }).where(eq(downloadRequests.id, id));
+}
+
+// Edit Requests
+// A capstone adviser must have an `approved` row here for a given project
+// before `projects.resubmit` (server/routers.ts) will let their edit
+// through. Mirrors the downloadRequests functions above exactly.
+export async function getAllEditRequests() {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    return store.editRequests.map(e => ({ ...e, createdAt: new Date(e.createdAt), updatedAt: new Date(e.updatedAt) })).sort((a, b) => b.id - a.id);
+  }
+  return db.select().from(editRequests).orderBy(desc(editRequests.createdAt));
+}
+
+export async function getPendingEditRequests() {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    return store.editRequests.filter(e => e.status === 'pending').map(e => ({ ...e, createdAt: new Date(e.createdAt), updatedAt: new Date(e.updatedAt) })).sort((a, b) => b.id - a.id);
+  }
+  return db.select().from(editRequests).where(eq(editRequests.status, 'pending')).orderBy(desc(editRequests.createdAt));
+}
+
+export async function getApprovedEditRequests(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    return store.editRequests.filter(e => e.userId === userId && e.status === 'approved').map(e => ({ ...e, createdAt: new Date(e.createdAt), updatedAt: new Date(e.updatedAt) }));
+  }
+  return db.select().from(editRequests).where(and(eq(editRequests.userId, userId), eq(editRequests.status, 'approved')));
+}
+
+export async function getUserEditRequests(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    return store.editRequests
+      .filter(e => e.userId === userId)
+      .map(e => ({ ...e, createdAt: new Date(e.createdAt), updatedAt: new Date(e.updatedAt) }))
+      .sort((a, b) => b.id - a.id);
+  }
+  return db.select().from(editRequests).where(eq(editRequests.userId, userId)).orderBy(desc(editRequests.createdAt));
+}
+
+/** True if the adviser currently has admin approval to edit this specific project. */
+export async function hasApprovedEditRequest(userId: number, projectId: number) {
+  const approved = await getApprovedEditRequests(userId);
+  return approved.some(e => e.projectId === projectId);
+}
+
+export async function createEditRequest(userId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    let existing = store.editRequests.find(e => e.userId === userId && e.projectId === projectId);
+    if (existing) {
+      if (existing.status === 'pending') return existing.id;
+      existing.status = 'pending';
+      existing.adminNote = null;
+      existing.updatedAt = new Date().toISOString();
+      saveLocalDb();
+      return existing.id;
+    }
+    const id = store.editRequests.length > 0 ? Math.max(...store.editRequests.map(e => e.id)) + 1 : 1;
+    store.editRequests.push({
+      id, projectId, userId, status: 'pending', adminNote: null,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+    });
+    saveLocalDb();
+    return id;
+  }
+
+  const existing = await db.select().from(editRequests).where(and(eq(editRequests.userId, userId), eq(editRequests.projectId, projectId))).limit(1);
+  if (existing.length > 0) {
+    if (existing[0].status === 'pending') return existing[0].id;
+    await db.update(editRequests).set({ status: 'pending', adminNote: null, updatedAt: new Date() }).where(eq(editRequests.id, existing[0].id));
+    return existing[0].id;
+  }
+
+  const result = await db.insert(editRequests).values({ userId, projectId }).$returningId();
+  return result[0]?.id;
+}
+
+export async function updateEditRequest(id: number, status: 'approved' | 'rejected', adminNote?: string) {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    const e = store.editRequests.find(e => e.id === id);
+    if (e) {
+      e.status = status;
+      e.adminNote = adminNote || null;
+      e.updatedAt = new Date().toISOString();
+      saveLocalDb();
+    }
+    return;
+  }
+  await db.update(editRequests).set({ status, adminNote: adminNote || null, updatedAt: new Date() }).where(eq(editRequests.id, id));
 }
 
 // Activity Logs
