@@ -61,11 +61,15 @@ export default function SiteHeader() {
         variant="ghost"
         size="sm"
         className={cn(
-          "gap-1.5 text-sm font-medium",
-          full && "w-full justify-start h-10",
+          "gap-1.5 text-sm font-medium rounded-none border-b-2 border-transparent",
+          full && "w-full justify-start h-10 rounded-md border-b-0",
           dark
-            ? cn("text-white/80 hover:bg-white/10 hover:text-white", location === item.href && "bg-white/15 text-white")
-            : cn(location === item.href && "bg-primary/10 text-primary")
+            ? cn(
+                "text-white/80 hover:bg-white/10 hover:text-white",
+                location === item.href && "text-white border-[#c9a227]",
+                full && location === item.href && "bg-white/15 border-b-0"
+              )
+            : cn(location === item.href && "bg-primary/10 text-primary border-b-0")
         )}
       >
         <item.icon className="h-4 w-4" />
@@ -91,8 +95,8 @@ export default function SiteHeader() {
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold text-white leading-tight">Capstone Archive</span>
-            <span className="text-[10px] text-[#f3d77a] font-medium leading-tight tracking-wide">Golden West Colleges, Inc.</span>
+            <span className="text-lg font-bold text-white leading-tight tracking-wide">Capstone Archive</span>
+            <span className="text-[10px] text-[#f3d77a] font-semibold leading-tight tracking-[0.15em] uppercase">Golden West Colleges, Inc.</span>
           </div>
         </Link>
 
@@ -113,7 +117,7 @@ export default function SiteHeader() {
                 variant="outline"
                 size="sm"
                 onClick={handleLogout}
-                className="hidden sm:inline-flex border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white"
+                className="hidden sm:inline-flex rounded-full border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white"
               >
                 Logout
               </Button>
@@ -121,12 +125,12 @@ export default function SiteHeader() {
           ) : (
             <>
               <Link href="/signup" className="no-underline hidden sm:block">
-                <Button variant="outline" size="sm" className="border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white">
+                <Button variant="outline" size="sm" className="rounded-full border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white">
                   Sign Up
                 </Button>
               </Link>
               <Link href="/login" className="no-underline">
-                <Button size="sm" className="gap-1.5 bg-[#c9a227] hover:bg-[#b8931f] text-[#1a3a6b] font-semibold">
+                <Button size="sm" className="gap-1.5 rounded-full bg-[#c9a227] hover:bg-[#b8931f] text-[#1a3a6b] font-semibold">
                   <LogIn className="h-4 w-4" />
                   Login
                 </Button>
