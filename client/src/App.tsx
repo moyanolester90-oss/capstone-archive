@@ -26,7 +26,6 @@ import ActivityLogs from "./pages/ActivityLogs";
 import SiteHeader from "./components/SiteHeader";
 import Sidebar from "./components/Sidebar";
 import Footer from "./components/Footer";
-import PageBackground from "./components/PageBackground";
 
 function Router() {
   return (
@@ -60,7 +59,6 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <PageBackground />
           <Toaster />
           <div className="flex min-h-screen flex-col">
             <SiteHeader />

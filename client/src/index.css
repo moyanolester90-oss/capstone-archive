@@ -70,8 +70,34 @@
   * {
     @apply border-border;
   }
+  /* Site-wide background: the Golden West Colleges campus photo, set once
+     here at the root so it applies to every page (Home, Browse, Upload,
+     My Uploads, Favorites, My Account, Archive, Scanner, Categories,
+     Users, View Requests, Edit Requests, Activity Logs, Dashboard, Login,
+     Sign Up, and everything else) for every role, and can never disappear
+     on navigation, refresh, login/logout, or a direct URL — it's plain CSS
+     on <body>, not something a page's own React tree can lose or omit.
+     The white gradient layered with it keeps existing cards, tables and
+     text exactly as readable as before; only the backdrop changed. */
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply text-foreground font-sans;
+    background-color: var(--color-background);
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)),
+      url("/campus-bg.png");
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  /* `background-attachment: fixed` is unreliable/costly on many mobile
+     browsers, so the photo scrolls with the page on small screens instead
+     — it still covers the full page, just without the fixed-parallax feel. */
+  @media (max-width: 1024px) {
+    body {
+      background-attachment: scroll;
+    }
   }
 }
 
