@@ -43,6 +43,13 @@
       "when": 1790700000000,
       "tag": "0005_role_student_rename",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1790775110689,
+      "tag": "0006_add_edit_requests",
+      "breakpoints": true
     }
   ]
 }
