@@ -2,28 +2,21 @@ import type { ReactNode } from "react";
 
 /**
  * Navy/gold banner used at the top of the logged-in dashboard pages
- * (Student, Adviser, Librarian/Admin), matching the same treatment used
- * on the Login/Signup hero and the Home page hero: a navy gradient, a
- * faint seal watermark, soft glow accents, and a gold decorative wave
- * along the bottom edge. `actions` is an optional slot for a button on
- * the right (e.g. Adviser Dashboard's "Upload Capstone").
+ * (Student, Adviser, Librarian/Admin): the campus photo with a navy tint
+ * over it, matching the same treatment used on the Login/Signup hero and
+ * the Home page hero, plus a gold decorative wave along the bottom edge.
+ * `actions` is an optional slot for a button on the right (e.g. Adviser
+ * Dashboard's "Upload Capstone").
  */
 export default function PageHero({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   return (
-    <div className="relative overflow-hidden bg-gradient-to-br from-[#0b1830] via-[#153567] to-[#1a3a6b]">
+    <div className="relative overflow-hidden bg-[#0b1830]">
       <div
         aria-hidden="true"
-        className="pointer-events-none select-none absolute right-0 top-1/2 h-[min(120vw,900px)] w-[min(120vw,900px)] translate-x-1/4 -translate-y-1/2 opacity-[0.08]"
-        style={{
-          backgroundImage: "url(/logo.jpg)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          WebkitMaskImage: "radial-gradient(circle at center, black 0%, black 32%, transparent 65%)",
-          maskImage: "radial-gradient(circle at center, black 0%, black 32%, transparent 65%)",
-          filter: "grayscale(1) brightness(2.2)",
-        }}
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/campus-bg.png)" }}
       />
-      <div className="pointer-events-none absolute -top-16 -left-10 h-64 w-64 rounded-full bg-[#c9a227]/20 blur-3xl" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0b1830]/90 via-[#153567]/80 to-[#1a3a6b]/75" />
 
       <div className="container relative py-10 md:py-12">
         <div className="flex flex-wrap items-end justify-between gap-4">

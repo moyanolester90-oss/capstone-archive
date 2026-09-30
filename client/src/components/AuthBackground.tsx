@@ -1,38 +1,27 @@
 import { FileText, Search, Users } from "lucide-react";
 
 /**
- * Layout wrapper for the Login and Sign Up pages: a full-bleed navy hero
- * (the school's brand navy, matching the primary color used everywhere
- * else in the app — see the chart palette in Dashboard.tsx) with the
- * school seal as a large, faint watermark and a gold decorative wave along
+ * Layout wrapper for the Login and Sign Up pages: the actual Golden West
+ * Colleges campus photo as a full-bleed hero, with a navy tint over it so
+ * white text and the card stay readable, and a gold decorative wave along
  * the bottom edge. On wide screens it also shows a left-hand branding
  * panel (name, tagline, blurb, quick feature row) beside the auth card,
  * matching the two-column look of the reference design. Every other page
- * keeps the plain light `PageBackground` watermark (mounted globally in
- * App.tsx); this component only replaces that look for the two auth
- * pages, where a stronger "front door" moment is appropriate.
+ * uses the same campus photo too, via the global `PageBackground`
+ * (mounted once in App.tsx) — this component just gives the two auth
+ * pages their own stronger "front door" treatment of it.
  */
 export default function AuthBackground({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative isolate min-h-[calc(100vh-5rem)] overflow-hidden bg-gradient-to-br from-[#0b1830] via-[#153567] to-[#1a3a6b]">
-      {/* Oversized, faint seal watermark — the same /logo.jpg used as the
-          site-wide watermark, just brightened for a dark background. */}
+    <div className="relative isolate min-h-[calc(100vh-5rem)] overflow-hidden bg-[#0b1830]">
+      {/* The campus photo itself */}
       <div
         aria-hidden="true"
-        className="pointer-events-none select-none absolute left-0 top-1/2 h-[min(140vw,1400px)] w-[min(140vw,1400px)] -translate-x-1/3 -translate-y-1/2 opacity-[0.10]"
-        style={{
-          backgroundImage: "url(/logo.jpg)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          WebkitMaskImage: "radial-gradient(circle at center, black 0%, black 32%, transparent 65%)",
-          maskImage: "radial-gradient(circle at center, black 0%, black 32%, transparent 65%)",
-          filter: "grayscale(1) brightness(2.2)",
-        }}
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/campus-bg.png)" }}
       />
-
-      {/* Soft glows for depth */}
-      <div className="pointer-events-none absolute -top-24 -right-20 h-96 w-96 rounded-full bg-[#c9a227]/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-[#2a5599]/40 blur-3xl" />
+      {/* Navy tint over the photo so the white text and card stay readable */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0b1830]/90 via-[#153567]/80 to-[#1a3a6b]/75" />
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-6xl flex-col items-center justify-center gap-10 px-4 py-12 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
         {/* Left branding panel — hidden on small screens, shown alongside the card on wide ones */}

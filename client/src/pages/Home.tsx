@@ -14,22 +14,15 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 md:py-28 bg-gradient-to-br from-[#0b1830] via-[#153567] to-[#1a3a6b]">
-        {/* Oversized, faint seal watermark */}
+      <section className="relative overflow-hidden py-20 md:py-28 bg-[#0b1830]">
+        {/* The campus photo */}
         <div
           aria-hidden="true"
-          className="pointer-events-none select-none absolute left-1/2 top-1/2 h-[min(140vw,1400px)] w-[min(140vw,1400px)] -translate-x-1/2 -translate-y-1/2 opacity-[0.08]"
-          style={{
-            backgroundImage: "url(/logo.jpg)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            WebkitMaskImage: "radial-gradient(circle at center, black 0%, black 32%, transparent 65%)",
-            maskImage: "radial-gradient(circle at center, black 0%, black 32%, transparent 65%)",
-            filter: "grayscale(1) brightness(2.2)",
-          }}
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url(/campus-bg.png)" }}
         />
-        <div className="pointer-events-none absolute -top-24 -right-20 h-96 w-96 rounded-full bg-[#c9a227]/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-[#2a5599]/40 blur-3xl" />
+        {/* Navy tint so the white hero text stays readable */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0b1830]/90 via-[#153567]/80 to-[#1a3a6b]/75" />
 
         <div className="container relative">
           <div className="max-w-3xl mx-auto text-center">

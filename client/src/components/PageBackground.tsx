@@ -1,44 +1,30 @@
 /**
- * Global backdrop for every page in the app: the school seal, large,
- * centered, and softly masked so it reads as a subtle professional
- * watermark woven into the page rather than a separate image placed on
- * top. Mounted once in App.tsx as a fixed layer behind the header and
- * every route, so Home, Browse, Upload, Dashboard, Users, Login, Sign Up,
- * Download Requests, and every other page share the exact same look.
+ * Global backdrop for every page in the app: the actual Golden West
+ * Colleges campus photo, fixed behind the header and every route. Mounted
+ * once in App.tsx, so Home, Browse, Upload, Dashboard, Users, Login,
+ * Sign Up, Download Requests, Archive, Scanner, Categories, My Account,
+ * and every other page share the exact same background — for every role.
  *
- * Kept lightly blurred (not heavily) and at low-but-visible opacity so the
- * seal stays clearly recognizable up close while still reading as a
- * watermark rather than the page's main visual.
+ * A soft white wash sits on top of the photo so the existing light-themed
+ * cards, tables, and dark text stay fully legible everywhere (this file
+ * only changes the backdrop behind them, never their own styling). The
+ * photo itself stays clearly visible at the edges and in any empty space
+ * around content.
  */
 export default function PageBackground() {
-  const maskImage =
-    "radial-gradient(circle at center, black 0%, black 35%, transparent 70%)";
-
   return (
-    <div
-      aria-hidden="true"
-      className="fixed inset-0 -z-10 overflow-hidden bg-background"
-    >
-      {/* The seal itself: centered, faded, lightly sharpened, and masked so
-          its edges dissolve into the page instead of a hard blurred box. */}
+    <div aria-hidden="true" className="fixed inset-0 -z-10 overflow-hidden bg-background">
+      {/* The campus photo, covering the full viewport and fixed in place. */}
       <div
-        className="pointer-events-none select-none absolute left-1/2 top-1/2 h-[min(90vw,1050px)] w-[min(90vw,1050px)] -translate-x-1/2 -translate-y-1/2 opacity-[0.09] blur-[0.5px]"
-        style={{
-          backgroundImage: "url(/logo.jpg)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          WebkitMaskImage: maskImage,
-          maskImage,
-        }}
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat lg:bg-fixed"
+        style={{ backgroundImage: "url(/campus-bg.png)" }}
       />
-      {/* A faint tint of the school colors, also centered, to help the seal
-          blend into the page instead of floating on plain white. */}
+      {/* Soft white wash so page content (cards, text, tables) reads exactly
+          as it did before — the photo shows through around and behind it. */}
+      <div className="absolute inset-0 bg-white/85" />
       <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(circle at center, rgba(30,64,175,0.04) 0%, rgba(30,64,175,0.015) 40%, transparent 70%)",
-        }}
+        className="absolute inset-0"
+        style={{ background: "radial-gradient(circle at 50% 30%, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.75) 60%, rgba(255,255,255,0.9) 100%)" }}
       />
     </div>
   );
