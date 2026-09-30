@@ -58,9 +58,9 @@ export default function SiteHeader() {
         variant="ghost"
         size="sm"
         className={cn(
-          "gap-1.5 text-sm font-medium",
+          "gap-1.5 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white",
           full && "w-full justify-start h-10",
-          location === item.href && "bg-primary/10 text-primary"
+          location === item.href && "bg-white/15 text-white"
         )}
       >
         <item.icon className="h-4 w-4" />
@@ -70,10 +70,10 @@ export default function SiteHeader() {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-lg">
+    <header className="sticky top-0 z-50 w-full bg-gradient-to-r from-[#0b1830] via-[#153567] to-[#0b1830] shadow-md">
       <div className="container flex h-16 items-center justify-between gap-2">
         <Link href="/" className="flex items-center gap-2 no-underline shrink-0">
-          <div className="h-11 w-11 shrink-0 rounded-full shadow-sm ring-1 ring-black/5 overflow-hidden">
+          <div className="h-11 w-11 shrink-0 rounded-full shadow-sm ring-2 ring-[#c9a227]/70 overflow-hidden">
             <img
               src="/logo.jpg"
               alt="Golden West Colleges seal"
@@ -86,8 +86,8 @@ export default function SiteHeader() {
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold text-primary leading-tight">Capstone Archive</span>
-            <span className="text-[10px] text-muted-foreground font-medium leading-tight">Golden West Colleges, Inc.</span>
+            <span className="text-lg font-bold text-white leading-tight">Capstone Archive</span>
+            <span className="text-[10px] text-[#f3d77a] font-medium leading-tight tracking-wide">Golden West Colleges, Inc.</span>
           </div>
         </Link>
 
@@ -100,19 +100,28 @@ export default function SiteHeader() {
           {isAuthenticated && user && <NotificationBell userId={user.id} />}
           {isAuthenticated ? (
             <>
-              <span className="hidden sm:block text-sm text-muted-foreground max-w-[160px] truncate">
+              <span className="hidden sm:block text-sm text-white/70 max-w-[160px] truncate">
                 {user?.name || "Student"}
-                {roleLabel && <span className="ml-1 text-xs bg-accent text-accent-foreground px-1.5 py-0.5 rounded font-medium">{roleLabel}</span>}
+                {roleLabel && <span className="ml-1 text-xs bg-[#c9a227] text-[#1a3a6b] px-1.5 py-0.5 rounded font-semibold">{roleLabel}</span>}
               </span>
-              <Button variant="outline" size="sm" onClick={handleLogout} className="hidden sm:inline-flex">Logout</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                className="hidden sm:inline-flex border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white"
+              >
+                Logout
+              </Button>
             </>
           ) : (
             <>
               <Link href="/signup" className="no-underline hidden sm:block">
-                <Button variant="outline" size="sm">Sign Up</Button>
+                <Button variant="outline" size="sm" className="border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white">
+                  Sign Up
+                </Button>
               </Link>
               <Link href="/login" className="no-underline">
-                <Button size="sm" className="gap-1.5">
+                <Button size="sm" className="gap-1.5 bg-[#c9a227] hover:bg-[#b8931f] text-[#1a3a6b] font-semibold">
                   <LogIn className="h-4 w-4" />
                   Login
                 </Button>
@@ -123,7 +132,12 @@ export default function SiteHeader() {
           {/* Menu button for phones, tablets and laptop screens */}
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className={isAdmin ? "2xl:hidden" : isAdviser ? "xl:hidden" : "lg:hidden"} aria-label="Open menu">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("text-white hover:bg-white/10 hover:text-white", isAdmin ? "2xl:hidden" : isAdviser ? "xl:hidden" : "lg:hidden")}
+                aria-label="Open menu"
+              >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>

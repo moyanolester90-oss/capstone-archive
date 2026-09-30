@@ -14,27 +14,40 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 md:py-28">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/10" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
+      <section className="relative overflow-hidden py-20 md:py-28 bg-gradient-to-br from-[#0b1830] via-[#153567] to-[#1a3a6b]">
+        {/* Oversized, faint seal watermark */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none select-none absolute left-1/2 top-1/2 h-[min(140vw,1400px)] w-[min(140vw,1400px)] -translate-x-1/2 -translate-y-1/2 opacity-[0.08]"
+          style={{
+            backgroundImage: "url(/logo.jpg)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            WebkitMaskImage: "radial-gradient(circle at center, black 0%, black 32%, transparent 65%)",
+            maskImage: "radial-gradient(circle at center, black 0%, black 32%, transparent 65%)",
+            filter: "grayscale(1) brightness(2.2)",
+          }}
+        />
+        <div className="pointer-events-none absolute -top-24 -right-20 h-96 w-96 rounded-full bg-[#c9a227]/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-24 h-96 w-96 rounded-full bg-[#2a5599]/40 blur-3xl" />
+
         <div className="container relative">
           <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/10 text-[#f3d77a] text-sm font-medium mb-6">
               <GraduationCap className="h-4 w-4" />
               BSIT Capstone Archive
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight mb-6">
+            <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight mb-6">
               Capstone Project{" "}
-              <span className="text-primary">Archive</span> Management System
+              <span className="text-[#f3d77a]">Archive</span> Management System
             </h1>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-lg text-white/80 mb-8 max-w-2xl mx-auto">
               Discover, share, and archive capstone projects from BSIT students at Golden West Colleges, Inc.
               Browse through a growing collection of innovative research and development work.
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
               <Link href="/browse" className="no-underline">
-                <Button size="lg" className="gap-2">
+                <Button size="lg" className="gap-2 bg-[#c9a227] hover:bg-[#b8931f] text-[#1a3a6b] font-semibold">
                   <Search className="h-5 w-5" />
                   Browse Projects
                   <ArrowRight className="h-4 w-4" />
@@ -42,14 +55,14 @@ export default function Home() {
               </Link>
               {isAuthenticated ? (canUpload && (
                 <Link href="/upload" className="no-underline">
-                  <Button size="lg" variant="outline" className="gap-2 border-primary/30">
+                  <Button size="lg" variant="outline" className="gap-2 border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white">
                     <Upload className="h-5 w-5" />
                     Upload Project
                   </Button>
                 </Link>
               )) : (
                 <Link href="/login" className="no-underline">
-                  <Button size="lg" variant="outline" className="gap-2 border-primary/30">
+                  <Button size="lg" variant="outline" className="gap-2 border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white">
                     <BookOpen className="h-5 w-5" />
                     Sign In
                   </Button>
@@ -58,6 +71,18 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Gold decorative wave along the bottom edge */}
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-0 w-full"
+          viewBox="0 0 1440 120"
+          preserveAspectRatio="none"
+          style={{ height: "56px" }}
+        >
+          <path fill="#c9a227" fillOpacity="0.9" d="M0,64 C240,118 480,4 720,34 C960,64 1200,118 1440,60 L1440,120 L0,120 Z" />
+          <path fill="#f3d77a" fillOpacity="0.35" d="M0,88 C240,120 480,50 720,66 C960,82 1200,120 1440,90 L1440,120 L0,120 Z" />
+        </svg>
       </section>
 
       {/* Features Grid */}
@@ -126,7 +151,7 @@ export default function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-12 bg-primary text-primary-foreground">
+      <section className="py-12 bg-gradient-to-r from-[#0b1830] via-[#153567] to-[#0b1830] text-white">
         <div className="container">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto text-center">
             {[
@@ -136,9 +161,9 @@ export default function Home() {
               { icon: GraduationCap, label: "School Years", value: "10+" },
             ].map((stat, i) => (
               <div key={i}>
-                <stat.icon className="h-8 w-8 mx-auto mb-2 opacity-80" />
+                <stat.icon className="h-8 w-8 mx-auto mb-2 text-[#f3d77a]" />
                 <div className="text-3xl font-bold">{stat.value}</div>
-                <div className="text-sm opacity-80">{stat.label}</div>
+                <div className="text-sm text-white/70">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -146,8 +171,8 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-border/50">
-        <div className="container text-center text-sm text-muted-foreground">
+      <footer className="py-8 border-t border-border/50 bg-[#0b1830] text-white/70">
+        <div className="container text-center text-sm">
           <p>&copy; {new Date().getFullYear()} Golden West Colleges, Inc. — Capstone Archive Management System</p>
           <p className="mt-1">BSIT Department</p>
         </div>
