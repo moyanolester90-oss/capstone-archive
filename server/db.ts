@@ -1,9 +1,9 @@
-import { eq, and, desc, like, sql } from "drizzle-orm";
+import { eq, and, desc, like, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import {
-  InsertUser, users, categories, projects, bookmarks, downloadRequests, editRequests, activityLogs, advisers,
-  type Category, type Project, type Bookmark, type DownloadRequest, type EditRequest, type ActivityLog, type Adviser,
+  InsertUser, users, categories, projects, bookmarks, downloadRequests, editRequests, activityLogs, advisers, projectMembers, passwordResetRequests,
+  type Category, type Project, type Bookmark, type DownloadRequest, type EditRequest, type ActivityLog, type Adviser, type ProjectMember, type PasswordResetRequest,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import fs from "node:fs";
@@ -74,10 +74,11 @@ interface LocalDbSchema {
   editRequests: any[];
   activityLogs: any[];
   advisers: any[];
+  passwordResetRequests: any[];
 }
 
 const EMPTY_TABLES: LocalDbSchema = {
-  users: [], categories: [], projects: [], bookmarks: [], downloadRequests: [], editRequests: [], activityLogs: [], advisers: [],
+  users: [], categories: [], projects: [], bookmarks: [], downloadRequests: [], editRequests: [], activityLogs: [], advisers: [], passwordResetRequests: [],
 };
 
 /**
@@ -488,7 +489,15 @@ export async function updateUserName(userId: number, name: string) {
   await db.update(users).set({ name, updatedAt: new Date() }).where(eq(users.id, userId));
 }
 
-/** Lets a signed-in user (any role) change their own password. Caller must already have verified the current password. */
+/**
+ * Lets a signed-in user (any role) change their own password. Caller must
+ * already have verified the current password. Always clears
+ * `mustChangePassword` — setting your own password (whether or not you were
+ * required to) satisfies that requirement, so this is also the function that
+ * completes an admin/adviser-approved "Forgot Password?" reset the moment
+ * the person picks their own new password (see `setTemporaryPassword` below,
+ * and `auth.changePassword` in server/routers.ts).
+ */
 export async function updateUserPassword(userId: number, passwordHash: string) {
   const db = await getDb();
   if (!db) {
@@ -496,12 +505,44 @@ export async function updateUserPassword(userId: number, passwordHash: string) {
     const u = data.users.find(u => u.id === userId);
     if (u) {
       u.passwordHash = passwordHash;
+      u.mustChangePassword = false;
+      u.updatedAt = new Date().toISOString();
+      saveLocalDb();
+    }
+    // Consume any outstanding approved-but-unused temporary password for
+    // this user, the moment they finish setting a permanent password of
+    // their own — see `clearUsedTemporaryPassword` below for why this lives
+    // here rather than only in the forced-change flow.
+    await clearUsedTemporaryPassword(userId);
+    return;
+  }
+  await db.update(users).set({ passwordHash, mustChangePassword: false, updatedAt: new Date() }).where(eq(users.id, userId));
+  await clearUsedTemporaryPassword(userId);
+}
+
+/**
+ * Sets a server-generated temporary password for an account — used only by
+ * the admin/adviser-approved "Forgot Password?" flow
+ * (`passwordResets.approve` in server/routers.ts), never by the person
+ * themselves. Unlike `updateUserPassword`, this *sets* `mustChangePassword`,
+ * forcing the account to pick its own new password (via the normal
+ * `changePassword` flow, which clears the flag again) the next time it signs
+ * in with this temporary password.
+ */
+export async function setTemporaryPassword(userId: number, passwordHash: string) {
+  const db = await getDb();
+  if (!db) {
+    const data = loadLocalDb();
+    const u = data.users.find(u => u.id === userId);
+    if (u) {
+      u.passwordHash = passwordHash;
+      u.mustChangePassword = true;
       u.updatedAt = new Date().toISOString();
       saveLocalDb();
     }
     return;
   }
-  await db.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, userId));
+  await db.update(users).set({ passwordHash, mustChangePassword: true, updatedAt: new Date() }).where(eq(users.id, userId));
 }
 
 /** Number of admin accounts that are currently active. */
@@ -622,13 +663,67 @@ export async function countProjectsInCategory(categoryId: number): Promise<numbe
 }
 
 // Projects
+//
+// `adviser` and `members` are normalized out of `projects`: adviser lives in
+// `advisers` (referenced by `adviserId`), and members live in
+// `projectMembers`, one row per person. The helpers below join that data
+// back in so every function still returns a project shaped like
+// `{ ...row, adviser: string, members: string }`, exactly as before —
+// callers (routers.ts, the frontend) never had to change.
+
+/** Attaches `adviser` (resolved name) and `members` (newline-joined) to a batch of raw project rows. */
+async function hydrateProjects<T extends { id: number; adviserId: number }>(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  rows: T[]
+): Promise<(T & { adviser: string; members: string })[]> {
+  if (rows.length === 0) return [];
+
+  const adviserIds = [...new Set(rows.map(r => r.adviserId))];
+  const adviserRows = await db.select().from(advisers).where(inArray(advisers.id, adviserIds));
+  const adviserNameById = new Map(adviserRows.map(a => [a.id, a.name]));
+
+  const projectIds = rows.map(r => r.id);
+  const memberRows = await db.select().from(projectMembers)
+    .where(inArray(projectMembers.projectId, projectIds))
+    .orderBy(projectMembers.projectId, projectMembers.sortOrder);
+  const membersByProjectId = new Map<number, string[]>();
+  for (const m of memberRows) {
+    const list = membersByProjectId.get(m.projectId) ?? [];
+    list.push(m.name);
+    membersByProjectId.set(m.projectId, list);
+  }
+
+  return rows.map(r => ({
+    ...r,
+    adviser: adviserNameById.get(r.adviserId) ?? "",
+    members: (membersByProjectId.get(r.id) ?? []).join("\n"),
+  }));
+}
+
+/** Single-row convenience wrapper around {@link hydrateProjects}. */
+async function hydrateProject<T extends { id: number; adviserId: number }>(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  row: T
+): Promise<T & { adviser: string; members: string }> {
+  const [hydrated] = await hydrateProjects(db, [row]);
+  return hydrated;
+}
+
+/** Replaces a project's member list with the given newline-separated names. */
+async function syncProjectMembers(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, projectId: number, membersText: string): Promise<void> {
+  await db.delete(projectMembers).where(eq(projectMembers.projectId, projectId));
+  const names = membersText.split("\n").map(n => n.trim()).filter(Boolean);
+  if (names.length === 0) return;
+  await db.insert(projectMembers).values(names.map((name, i) => ({ projectId, name, sortOrder: i })));
+}
+
 export async function getAllProjects() {
   const db = await getDb();
   if (!db) {
     const data = loadLocalDb();
     return data.projects.map(p => ({ ...p, createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt) })).sort((a, b) => b.id - a.id);
   }
-  return db.select().from(projects).orderBy(desc(projects.createdAt));
+  return hydrateProjects(db, await db.select().from(projects).orderBy(desc(projects.createdAt)));
 }
 
 export async function getApprovedProjects() {
@@ -637,7 +732,7 @@ export async function getApprovedProjects() {
     const data = loadLocalDb();
     return data.projects.filter(p => p.status === 'approved').map(p => ({ ...p, createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt) })).sort((a, b) => b.id - a.id);
   }
-  return db.select().from(projects).where(eq(projects.status, 'approved')).orderBy(desc(projects.createdAt));
+  return hydrateProjects(db, await db.select().from(projects).where(eq(projects.status, 'approved')).orderBy(desc(projects.createdAt)));
 }
 
 export async function getPendingProjects() {
@@ -646,7 +741,7 @@ export async function getPendingProjects() {
     const data = loadLocalDb();
     return data.projects.filter(p => p.status === 'pending').map(p => ({ ...p, createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt) })).sort((a, b) => b.id - a.id);
   }
-  return db.select().from(projects).where(eq(projects.status, 'pending')).orderBy(desc(projects.createdAt));
+  return hydrateProjects(db, await db.select().from(projects).where(eq(projects.status, 'pending')).orderBy(desc(projects.createdAt)));
 }
 
 export async function getProjectsByUploader(userId: number) {
@@ -658,7 +753,7 @@ export async function getProjectsByUploader(userId: number) {
       .map(p => ({ ...p, createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt) }))
       .sort((a, b) => b.id - a.id);
   }
-  return db.select().from(projects).where(eq(projects.uploadedBy, userId)).orderBy(desc(projects.createdAt));
+  return hydrateProjects(db, await db.select().from(projects).where(eq(projects.uploadedBy, userId)).orderBy(desc(projects.createdAt)));
 }
 
 export async function getProjectById(id: number) {
@@ -670,7 +765,7 @@ export async function getProjectById(id: number) {
     return { ...p, createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt) };
   }
   const result = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  return result.length > 0 ? hydrateProject(db, result[0]) : undefined;
 }
 
 export async function searchProjects(query?: string, categoryId?: number, author?: string, adviser?: string, schoolYear?: string, features?: string, research?: string) {
@@ -699,20 +794,22 @@ export async function searchProjects(query?: string, categoryId?: number, author
     );
   }
   if (categoryId) conditions.push(eq(projects.categoryId, categoryId));
-  if (author) conditions.push(sql`LOWER(${projects.members}) LIKE ${`%${author.toLowerCase()}%`}`);
-  if (adviser) conditions.push(sql`LOWER(${projects.adviser}) LIKE ${`%${adviser.toLowerCase()}%`}`);
+  if (author) {
+    conditions.push(sql`${projects.id} IN (SELECT ${projectMembers.projectId} FROM ${projectMembers} WHERE LOWER(${projectMembers.name}) LIKE ${`%${author.toLowerCase()}%`})`);
+  }
+  if (adviser) {
+    conditions.push(sql`${projects.adviserId} IN (SELECT ${advisers.id} FROM ${advisers} WHERE LOWER(${advisers.name}) LIKE ${`%${adviser.toLowerCase()}%`})`);
+  }
   if (schoolYear) conditions.push(eq(projects.schoolYear, schoolYear));
   if (features) conditions.push(sql`LOWER(${projects.features}) LIKE ${`%${features.toLowerCase()}%`}`);
   if (research) conditions.push(sql`LOWER(${projects.research}) LIKE ${`%${research.toLowerCase()}%`}`);
-  return db.select().from(projects).where(and(...conditions)).orderBy(desc(projects.createdAt));
+  return hydrateProjects(db, await db.select().from(projects).where(and(...conditions)).orderBy(desc(projects.createdAt)));
 }
 
 /**
  * Resolves a free-typed adviser name to the canonical `advisers` row,
  * creating it on first use (case/whitespace-insensitive match). This is the
- * single write path that keeps `advisers` the normalized source of truth
- * and `projects.adviser` a display cache in sync with it — see the comment
- * on `projects.adviser` in drizzle/schema.ts.
+ * single write path that keeps `advisers` the normalized source of truth.
  */
 export async function getOrCreateAdviser(rawName: string): Promise<{ id: number; name: string }> {
   const name = rawName.trim();
@@ -783,8 +880,6 @@ export async function createProject(data: {
     abstract: data.abstract,
     categoryId: data.categoryId,
     adviserId: adviser.id,
-    adviser: adviser.name,
-    members: data.members,
     features: data.features || null,
     research: data.research || null,
     schoolYear: data.schoolYear,
@@ -795,7 +890,9 @@ export async function createProject(data: {
     uploadedBy: data.uploadedBy,
     status: data.status ?? 'pending',
   }).$returningId();
-  return result[0]?.id;
+  const id = result[0]?.id;
+  if (id) await syncProjectMembers(db, id, data.members);
+  return id;
 }
 
 export async function updateProject(id: number, data: Partial<{
@@ -807,7 +904,6 @@ export async function updateProject(id: number, data: Partial<{
   const patch: typeof data & { adviserId?: number } = { ...data };
   if (typeof patch.adviser === 'string') {
     const adviser = await getOrCreateAdviser(patch.adviser);
-    patch.adviser = adviser.name;
     patch.adviserId = adviser.id;
   }
   const db = await getDb();
@@ -815,24 +911,37 @@ export async function updateProject(id: number, data: Partial<{
     const store = loadLocalDb();
     const p = store.projects.find(p => p.id === id);
     if (p) {
+      if (typeof patch.adviser === 'string') p.adviser = patch.adviser;
       Object.assign(p, patch);
       p.updatedAt = new Date().toISOString();
       saveLocalDb();
     }
     return;
   }
-  await db.update(projects).set({ ...patch, updatedAt: new Date() }).where(eq(projects.id, id));
+  const { adviser, members, ...rest } = patch;
+  if (Object.keys(rest).length > 0) {
+    await db.update(projects).set({ ...rest, updatedAt: new Date() }).where(eq(projects.id, id));
+  }
+  if (members !== undefined) await syncProjectMembers(db, id, members);
 }
 
 /**
- * Deletes a project together with its bookmarks, download requests, and edit
- * requests. `bookmarks.projectId`, `downloadRequests.projectId`, and
- * `editRequests.projectId` are all declared `onDelete: "cascade"` in
- * drizzle/schema.ts, so MySQL removes those rows by itself the moment the
- * project row is deleted — a single query is enough on the real database.
- * (Deleting them one-by-one first used to also work, but meant 4 sequential
- * round-trips to the database instead of 1, which is 4x the exposure to any
- * connection hiccup for no benefit.)
+ * Deletes a project together with its members, bookmarks, download requests,
+ * and edit requests.
+ *
+ * drizzle/schema.ts declares `onDelete: "cascade"` on all four of
+ * `projectMembers.projectId`, `bookmarks.projectId`,
+ * `downloadRequests.projectId`, and `editRequests.projectId`, but that's only
+ * true in the TypeScript schema. Checking the live database's actual foreign
+ * keys (information_schema.REFERENTIAL_CONSTRAINTS) shows `editRequests` and
+ * `projectMembers` really do cascade, while `bookmarks` and
+ * `downloadRequests` are still `RESTRICT` — those two tables predate the
+ * cascade being added to the schema and were never migrated to match. That
+ * mismatch is what caused "Failed query: delete from `projects`" errors
+ * whenever a project still had bookmarks or download requests. So all four
+ * related tables are cleaned up explicitly here rather than relying on
+ * MySQL's cascade — correct regardless of what each constraint actually does
+ * on a given database.
  */
 export async function deleteProject(id: number) {
   const db = await getDb();
@@ -847,6 +956,10 @@ export async function deleteProject(id: number) {
     saveLocalDb();
     return;
   }
+  await db.delete(projectMembers).where(eq(projectMembers.projectId, id));
+  await db.delete(bookmarks).where(eq(bookmarks.projectId, id));
+  await db.delete(downloadRequests).where(eq(downloadRequests.projectId, id));
+  await db.delete(editRequests).where(eq(editRequests.projectId, id));
   await db.delete(projects).where(eq(projects.id, id));
 }
 
@@ -861,10 +974,10 @@ export async function getUserBookmarks(userId: number) {
   const bms = await db.select().from(bookmarks).where(eq(bookmarks.userId, userId));
   const projectIds = bms.map(b => b.projectId);
   if (projectIds.length === 0) return [];
-  return db.select().from(projects).where(and(
+  return hydrateProjects(db, await db.select().from(projects).where(and(
     eq(projects.status, 'approved'),
-    sql`${projects.id} IN (${sql.join(projectIds.map(id => sql`${id}`), sql`, `)})`,
-  ));
+    inArray(projects.id, projectIds),
+  )));
 }
 
 export async function getBookmark(userId: number, projectId: number) {
@@ -1088,6 +1201,209 @@ export async function updateEditRequest(id: number, status: 'approved' | 'reject
     return;
   }
   await db.update(editRequests).set({ status, adminNote: adminNote || null, updatedAt: new Date() }).where(eq(editRequests.id, id));
+}
+
+// Password reset requests ("Forgot Password?")
+
+/**
+ * Submits (or re-submits) a password reset request for `userId`. One row per
+ * user, same upsert shape as `createEditRequest`: asking again after a
+ * previous request was rejected or completed resets that same row back to
+ * `pending` instead of piling up duplicate rows. Returns the request id.
+ */
+export async function createPasswordResetRequest(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    const existing = store.passwordResetRequests.find((r: any) => r.userId === userId);
+    if (existing) {
+      if (existing.status === 'pending') return existing.id;
+      // Re-requesting after a previous reset was rejected or already used
+      // up — reset the row to pending and clear any leftover temporary
+      // password from that earlier cycle so it can't still be looked up.
+      existing.status = 'pending';
+      existing.temporaryPassword = null;
+      existing.used = false;
+      existing.updatedAt = new Date().toISOString();
+      saveLocalDb();
+      return existing.id;
+    }
+    const id = store.passwordResetRequests.length > 0 ? Math.max(...store.passwordResetRequests.map((r: any) => r.id)) + 1 : 1;
+    store.passwordResetRequests.push({
+      id, userId, status: 'pending', temporaryPassword: null, used: false,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    });
+    saveLocalDb();
+    return id;
+  }
+
+  const existing = await db.select().from(passwordResetRequests).where(eq(passwordResetRequests.userId, userId)).limit(1);
+  if (existing.length > 0) {
+    if (existing[0].status === 'pending') return existing[0].id;
+    await db.update(passwordResetRequests)
+      .set({ status: 'pending', temporaryPassword: null, used: false, updatedAt: new Date() })
+      .where(eq(passwordResetRequests.id, existing[0].id));
+    return existing[0].id;
+  }
+
+  const result = await db.insert(passwordResetRequests).values({ userId }).$returningId();
+  return result[0]?.id;
+}
+
+export async function getPasswordResetRequestById(id: number) {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    const r = store.passwordResetRequests.find((r: any) => r.id === id);
+    if (!r) return undefined;
+    return { ...r, createdAt: new Date(r.createdAt), updatedAt: new Date(r.updatedAt) };
+  }
+  const result = await db.select().from(passwordResetRequests).where(eq(passwordResetRequests.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Every password reset request, newest first, joined with the requester's
+ * name/School ID/role so the Admin and Adviser review pages don't need a
+ * second round trip. An Adviser may only review Student requests — that
+ * filter is applied by the caller (`passwordResets.list` in
+ * server/routers.ts), not here, so this stays a single reusable query.
+ */
+export async function getAllPasswordResetRequests() {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    const byId = new Map(store.users.map((u: any) => [u.id, u]));
+    return store.passwordResetRequests
+      .map((r: any) => {
+        const u = byId.get(r.userId);
+        return {
+          ...r,
+          createdAt: new Date(r.createdAt), updatedAt: new Date(r.updatedAt),
+          userName: u?.name ?? null, userSchoolId: u?.schoolId ?? null, userRole: u?.role ?? null,
+        };
+      })
+      .sort((a: any, b: any) => b.id - a.id);
+  }
+  return db.select({
+    id: passwordResetRequests.id,
+    userId: passwordResetRequests.userId,
+    status: passwordResetRequests.status,
+    createdAt: passwordResetRequests.createdAt,
+    updatedAt: passwordResetRequests.updatedAt,
+    userName: users.name,
+    userSchoolId: users.schoolId,
+    userRole: users.role,
+  }).from(passwordResetRequests)
+    .innerJoin(users, eq(passwordResetRequests.userId, users.id))
+    .orderBy(desc(passwordResetRequests.id));
+}
+
+export async function rejectPasswordResetRequest(id: number) {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    const r = store.passwordResetRequests.find((r: any) => r.id === id);
+    if (r) {
+      r.status = 'rejected';
+      r.temporaryPassword = null;
+      r.used = false;
+      r.updatedAt = new Date().toISOString();
+      saveLocalDb();
+    }
+    return;
+  }
+  await db.update(passwordResetRequests)
+    .set({ status: 'rejected', temporaryPassword: null, used: false, updatedAt: new Date() })
+    .where(eq(passwordResetRequests.id, id));
+}
+
+/**
+ * Approves a request and records the plaintext temporary password alongside
+ * it (in addition to hashing it onto the account via `setTemporaryPassword`,
+ * called separately by the caller). Kept in plaintext here, scoped to this
+ * one request row, specifically so `getApprovedTemporaryPasswordBySchoolId`
+ * can serve it back to the Student Login page — see the schema.ts doc
+ * comment on `passwordResetRequests` for the full lifecycle and how it gets
+ * cleared again once it's used.
+ */
+export async function approvePasswordResetRequest(id: number, temporaryPassword: string) {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    const r = store.passwordResetRequests.find((r: any) => r.id === id);
+    if (r) {
+      r.status = 'approved';
+      r.temporaryPassword = temporaryPassword;
+      r.used = false;
+      r.updatedAt = new Date().toISOString();
+      saveLocalDb();
+    }
+    return;
+  }
+  await db.update(passwordResetRequests)
+    .set({ status: 'approved', temporaryPassword, used: false, updatedAt: new Date() })
+    .where(eq(passwordResetRequests.id, id));
+}
+
+/**
+ * Public lookup used by the Student Login page: given a School ID, is there
+ * a temporary password waiting that this person can reveal and sign in
+ * with? Only ever returns something for an `approved`, not-yet-`used` row —
+ * a pending, rejected, or already-consumed request yields nothing, so this
+ * can't be used to find out anything else about the account. Intentionally
+ * not role-restricted to students: the same "Forgot Password?" mechanism
+ * covers Adviser/Admin accounts too (see server/routers.ts), so their
+ * accounts' temporary passwords surface the same way once this lookup is
+ * wired into their own sign-in forms.
+ */
+export async function getApprovedTemporaryPasswordBySchoolId(schoolId: string): Promise<string | null> {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    const user = store.users.find((u: any) => u.schoolId === schoolId);
+    if (!user) return null;
+    const r = store.passwordResetRequests.find((r: any) => r.userId === user.id);
+    if (!r || r.status !== 'approved' || r.used || !r.temporaryPassword) return null;
+    return r.temporaryPassword;
+  }
+  const result = await db.select({
+    temporaryPassword: passwordResetRequests.temporaryPassword,
+    status: passwordResetRequests.status,
+    used: passwordResetRequests.used,
+  }).from(passwordResetRequests)
+    .innerJoin(users, eq(passwordResetRequests.userId, users.id))
+    .where(eq(users.schoolId, schoolId))
+    .limit(1);
+  const r = result[0];
+  if (!r || r.status !== 'approved' || r.used || !r.temporaryPassword) return null;
+  return r.temporaryPassword;
+}
+
+/**
+ * Marks this user's approved temporary password as consumed and wipes the
+ * plaintext, so it can never be looked up or signed in with again. Called
+ * from `updateUserPassword` the moment ANY permanent password change
+ * succeeds for this user (not just the forced one) — see the comment there.
+ * A no-op if there's no outstanding approved/unused request, so it's safe
+ * to call unconditionally on every password change.
+ */
+export async function clearUsedTemporaryPassword(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    const store = loadLocalDb();
+    const r = store.passwordResetRequests.find((r: any) => r.userId === userId && r.status === 'approved' && !r.used);
+    if (r) {
+      r.used = true;
+      r.temporaryPassword = null;
+      r.updatedAt = new Date().toISOString();
+      saveLocalDb();
+    }
+    return;
+  }
+  await db.update(passwordResetRequests)
+    .set({ used: true, temporaryPassword: null, updatedAt: new Date() })
+    .where(and(eq(passwordResetRequests.userId, userId), eq(passwordResetRequests.status, 'approved'), eq(passwordResetRequests.used, false)));
 }
 
 // Activity Logs

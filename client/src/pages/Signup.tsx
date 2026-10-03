@@ -65,18 +65,19 @@ export default function Signup() {
   const { isAuthenticated, refresh } = useAuth();
   const [, navigate] = useLocation();
   const params = new URLSearchParams(window.location.search);
-  // Adviser/Librarian account creation is hidden by default — same Ctrl+Q
-  // shortcut used on the Login page reveals the "Adviser / Librarian" tab.
+  // Student sign-up shows by default. Pressing Ctrl+Q (same shortcut used on
+  // the Login page) switches to staff-only mode: Student is hidden and only
+  // the "Adviser / Librarian" tab remains. Pressing it again switches back.
   const staffRevealed = useSecretReveal();
   const [tab, setTab] = useState<SignupTab>(() => (params.get("portal") === "student" ? "student" : params.get("portal") === "adviser" || params.get("portal") === "admin" ? "staff" : "student"));
   const [staffRole, setStaffRole] = useState<StaffRole>(() => (params.get("portal") === "admin" ? "admin" : "adviser"));
 
-  // If staff signup gets hidden again while it was the active tab, fall back to Student.
+  // Keep the selected tab in sync with which one is currently visible: fall
+  // back to Student when staff mode turns off, and to Staff when it turns on.
   useEffect(() => {
-    if (!staffRevealed && tab !== "student") {
-      setTab("student");
-    }
-  }, [staffRevealed, tab]);
+    setTab(staffRevealed ? "staff" : "student");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staffRevealed]);
 
   // Student fields
   const [studentId, setStudentId] = useState("");
@@ -235,18 +236,20 @@ export default function Signup() {
           )}
 
           <Tabs value={tab} onValueChange={v => { setTab(v as SignupTab); setFormError(null); }}>
-            <TabsList className={cn("grid w-full", staffRevealed ? "grid-cols-2" : "grid-cols-1")}>
-              <TabsTrigger value="student"><GraduationCap className="h-4 w-4 mr-1.5" />Student</TabsTrigger>
-              {staffRevealed && (
+            <TabsList className="grid w-full grid-cols-1">
+              {staffRevealed ? (
                 <TabsTrigger value="staff"><Library className="h-4 w-4 mr-1.5" />Adviser / Librarian</TabsTrigger>
+              ) : (
+                <TabsTrigger value="student"><GraduationCap className="h-4 w-4 mr-1.5" />Student</TabsTrigger>
               )}
             </TabsList>
             {staffRevealed && (
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Staff sign-up revealed. Press <kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Ctrl</kbd>+<kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Q</kbd> to hide it again.
+                Staff-only mode. Press <kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Ctrl</kbd>+<kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Q</kbd> to show Student sign-up again.
               </p>
             )}
 
+            {!staffRevealed && (
             <TabsContent value="student" className="pt-3">
               {studentPending ? (
                 <div className="flex flex-col items-center text-center gap-3 py-6">
@@ -300,6 +303,7 @@ export default function Signup() {
               </form>
               )}
             </TabsContent>
+            )}
 
             {staffRevealed && (
             <TabsContent value="staff" className="pt-3">

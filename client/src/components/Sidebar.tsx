@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Link, useLocation } from "wouter";
 import {
   BookOpen, Upload, Star, LayoutDashboard, FileText,
-  FolderOpen, Tags, Users, Download, Activity, ScanLine, UserCircle, PencilLine,
+  FolderOpen, Tags, Users, Download, Activity, ScanLine, UserCircle, PencilLine, KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,11 +33,12 @@ export default function Sidebar() {
 
   const adminItems = isAdmin ? [
     { href: "/admin/archive", label: "Archive", icon: FolderOpen },
-    { href: "/admin/scanner", label: "Scanner", icon: ScanLine },
+    { href: "/admin/scanner", label: "Converter", icon: ScanLine },
     { href: "/admin/categories", label: "Categories", icon: Tags },
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/downloads", label: "View Requests", icon: Download },
     { href: "/admin/edit-requests", label: "Edit Requests", icon: PencilLine },
+    { href: "/password-resets", label: "Password Resets", icon: KeyRound },
     { href: "/admin/activities", label: "Activity Logs", icon: Activity },
   ] : [];
 

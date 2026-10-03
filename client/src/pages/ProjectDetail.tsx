@@ -5,16 +5,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Bookmark, Download, User, Calendar, FolderOpen, Eye,
-  Loader2, BookOpen, Sparkles, FlaskConical, Clock, CheckCircle, AlertCircle,
+  ArrowLeft, Bookmark, Download, User, Calendar, FolderOpen,
+  Loader2, BookOpen, Sparkles, FlaskConical, Clock, CheckCircle, AlertCircle, Eye, EyeOff,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
-import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import Watermark from "@/components/Watermark";
 import ContentProtection from "@/components/ContentProtection";
-import DocumentViewer from "@/components/DocumentViewer";
+import PdfViewer from "@/components/PdfViewer";
+import { useState } from "react";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +22,7 @@ export default function ProjectDetail() {
   const { user, isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const { data: project, isLoading } = trpc.projects.get.useQuery({ id: projectId });
   const { data: categories } = trpc.categories.list.useQuery();
@@ -32,6 +33,14 @@ export default function ProjectDetail() {
   const { data: myRequests } = trpc.downloadRequests.myRequests.useQuery(
     undefined,
     { enabled: isAuthenticated }
+  );
+  // Only fetched once the viewer is actually opened — this streams the raw
+  // PDF bytes server-side (see `projects.viewDocument` in server/routers.ts),
+  // which already re-checks approval/ownership itself, so there's no path
+  // to the bytes that skips authorization just because the button rendered.
+  const { data: viewDoc, isLoading: viewDocLoading, error: viewDocError } = trpc.projects.viewDocument.useQuery(
+    { id: projectId },
+    { enabled: viewerOpen, staleTime: Infinity, gcTime: 0 }
   );
 
   const toggleBookmark = trpc.bookmarks.toggle.useMutation({
@@ -45,25 +54,15 @@ export default function ProjectDetail() {
 
   const createDownloadReq = trpc.downloadRequests.create.useMutation({
     onSuccess: () => {
-      toast.success(
-        user?.role === 'adviser'
-          ? "Request to download submitted. Please wait for Librarian approval."
-          : "Request to view submitted. Please wait for Librarian approval."
-      );
+      toast.success("Download request submitted. Please wait for Admin approval.");
       utils.downloadRequests.invalidate();
     },
-    onError: (err) => toast.error(err.message || "Failed to submit request"),
+    onError: (err) => toast.error(err.message || "Failed to submit download request"),
   });
-
-  const [viewerOpen, setViewerOpen] = useState(false);
-  const viewDocument = trpc.projects.viewDocument.useQuery(
-    { id: projectId },
-    { enabled: viewerOpen && projectId > 0 }
-  );
 
   if (isLoading) {
     return (
-      <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center">
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -71,7 +70,7 @@ export default function ProjectDetail() {
 
   if (!project) {
     return (
-      <div className="min-h-[calc(100vh-5rem)] flex flex-col items-center justify-center p-4">
+      <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4">
         <BookOpen className="h-12 w-12 text-muted-foreground/40 mb-4" />
         <h2 className="text-xl font-semibold mb-2">Project Not Found</h2>
         <p className="text-muted-foreground mb-4">This project may not exist or hasn't been approved yet.</p>
@@ -82,32 +81,30 @@ export default function ProjectDetail() {
 
   const category = categories?.find(c => c.id === project.categoryId);
   const existingRequest = myRequests?.find(r => r.projectId === projectId);
-  const hasApprovedAccess = existingRequest?.status === 'approved';
+  const hasDownloadAccess = existingRequest?.status === 'approved';
   const isOwner = user?.id === project.uploadedBy;
   const isAdmin = user?.role === 'admin';
-  // Advisers (who don't own the project) request an actual download of the
-  // original file; students request view-only access through the in-app
-  // viewer. Both share the same approval queue behind the scenes.
-  const isAdviser = user?.role === 'adviser';
-  const isRequestingDownload = isAdviser && !isOwner && !isAdmin;
+  // Students only ever get view-only access in the in-app viewer, never the
+  // original file — advisers request an actual download of it (see the
+  // "View & Download Requests" admin page's own description of the
+  // distinction) — so the student-facing copy below says "View" instead of
+  // "Download" to describe what they're actually asking for and will get.
+  const isStudent = user?.role === 'student';
 
   const handleDownload = () => {
     if (!project.fileUrl) return;
-    // Owner/Librarian only — a real download of the original file.
+    // Use window.open or a temporary link to trigger download while keeping it slightly less obvious
     const link = document.createElement('a');
     link.href = project.fileUrl;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
+    // We don't append to body to avoid it showing up in DOM for long
     link.click();
     toast.info("Preparing download...");
   };
 
-  const handleOpenViewer = () => {
-    setViewerOpen(true);
-  };
-
   return (
-    <div className="min-h-[calc(100vh-5rem)] py-8">
+    <div className="min-h-[calc(100vh-4rem)] py-8">
       <div className="container max-w-4xl">
         <ContentProtection projectId={projectId} enabled={!isAdmin && !isOwner}>
         <Watermark>
@@ -140,7 +137,7 @@ export default function ProjectDetail() {
                   className="gap-1.5"
                 >
                   <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} />
-                  {isBookmarked ? "Favorited" : "Favorite"}
+                  {isBookmarked ? "Saved" : "Save"}
                 </Button>
               )}
             </div>
@@ -209,33 +206,60 @@ export default function ProjectDetail() {
               <p className="text-foreground leading-relaxed whitespace-pre-wrap">{project.abstract}</p>
             </div>
 
-            {/* File / Document access */}
+            {/* File / Download */}
             {project.hasDocument && (
               <div className="border-t pt-6">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Document Attachment</h3>
-                  {(hasApprovedAccess || isOwner || isAdmin) && (
+                  {(hasDownloadAccess || isOwner || isAdmin) && (
                     <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Authorized Access</span>
                   )}
                 </div>
+                {hasDownloadAccess || isOwner || isAdmin ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      {project.fileUrl && (
+                        <Button className="gap-2" onClick={handleDownload}>
+                          <Download className="h-4 w-4" />
+                          Download {project.fileName || 'Document'}
+                        </Button>
+                      )}
+                      {project.fileType === 'application/pdf' && (
+                        <Button
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => setViewerOpen(v => !v)}
+                        >
+                          {viewerOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {viewerOpen ? 'Hide Preview' : 'View in Browser'}
+                        </Button>
+                      )}
+                    </div>
 
-                {isOwner || isAdmin ? (
-                  <Button className="gap-2" onClick={handleDownload}>
-                    <Download className="h-4 w-4" />
-                    Download {project.fileName || 'Document'}
-                  </Button>
-                ) : hasApprovedAccess && isRequestingDownload ? (
-                  <Button className="gap-2" onClick={handleDownload}>
-                    <Download className="h-4 w-4" />
-                    Download {project.fileName || 'Document'}
-                  </Button>
-                ) : hasApprovedAccess ? (
-                  <Button className="gap-2" onClick={handleOpenViewer}>
-                    <Eye className="h-4 w-4" />
-                    View {project.fileName || 'Document'}
-                  </Button>
+                    {viewerOpen && (
+                      <div>
+                        {viewDocLoading && (
+                          <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground border rounded-lg bg-muted/30">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span className="text-sm">Preparing protected preview…</span>
+                          </div>
+                        )}
+                        {viewDocError && !viewDocLoading && (
+                          <div className="flex items-center gap-2 py-6 px-4 text-sm text-destructive border rounded-lg bg-destructive/5">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            {viewDocError.message || 'Could not load this document.'}
+                          </div>
+                        )}
+                        {viewDoc && !viewDocLoading && (
+                          <PdfViewer base64={viewDoc.base64} fileName={viewDoc.fileName ?? undefined} />
+                        )}
+                      </div>
+                    )}
+                  </div>
                 ) : !isAuthenticated ? (
-                  <p className="text-sm text-muted-foreground">Please login to request access.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Please login to request {isStudent ? 'view' : 'download'} access.
+                  </p>
                 ) : existingRequest?.status === 'pending' ? (
                   <div className="space-y-2">
                     <Button variant="outline" disabled className="gap-2 opacity-70">
@@ -244,9 +268,7 @@ export default function ProjectDetail() {
                     </Button>
                     <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
-                      {isRequestingDownload
-                        ? "Request to download submitted. Please wait for Librarian approval."
-                        : "Request to view submitted. Please wait for Librarian approval."}
+                      {isStudent ? 'View request' : 'Download request'} submitted. Please wait for Admin approval.
                     </p>
                   </div>
                 ) : existingRequest?.status === 'rejected' ? (
@@ -259,16 +281,14 @@ export default function ProjectDetail() {
                     >
                       {createDownloadReq.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isRequestingDownload ? (
-                        <Download className="h-4 w-4" />
                       ) : (
-                        <Eye className="h-4 w-4" />
+                        <Download className="h-4 w-4" />
                       )}
                       Request Again
                     </Button>
                     <p className="text-xs text-red-600 font-medium flex items-center gap-1">
                       <AlertCircle className="h-3.5 w-3.5" />
-                      Request rejected.{existingRequest.adminNote ? ` Reason: ${existingRequest.adminNote}` : ''}
+                      {isStudent ? 'View request' : 'Download request'} rejected.{existingRequest.adminNote ? ` Reason: ${existingRequest.adminNote}` : ''}
                     </p>
                   </div>
                 ) : (
@@ -280,29 +300,11 @@ export default function ProjectDetail() {
                   >
                     {createDownloadReq.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isRequestingDownload ? (
-                      <Download className="h-4 w-4" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Download className="h-4 w-4" />
                     )}
-                    {isRequestingDownload ? "Request to Download" : "Request to View"}
+                    {isStudent ? 'Request to View' : 'Request Download'}
                   </Button>
-                )}
-
-                {viewerOpen && !isOwner && !isAdmin && !isRequestingDownload && (
-                  <div className="mt-4">
-                    {viewDocument.isLoading && (
-                      <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground text-sm">
-                        <Loader2 className="h-5 w-5 animate-spin" /> Opening document…
-                      </div>
-                    )}
-                    {viewDocument.isError && (
-                      <p className="text-sm text-red-600">{viewDocument.error?.message || "Could not open this document."}</p>
-                    )}
-                    {viewDocument.data && (
-                      <DocumentViewer base64={viewDocument.data.base64} fileName={viewDocument.data.fileName} />
-                    )}
-                  </div>
                 )}
               </div>
             )}

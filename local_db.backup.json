@@ -1030,6 +1030,15 @@
       "entityType": "user",
       "entityId": 10,
       "createdAt": "2026-09-28T13:14:41.238Z"
+    },
+    {
+      "id": 89,
+      "userId": 11,
+      "action": "user_signup",
+      "description": "New Adviser account created: Ashley (12345678910)",
+      "entityType": "user",
+      "entityId": 11,
+      "createdAt": "2026-09-28T14:01:10.380Z"
     }
   ]
 }

@@ -9,14 +9,14 @@ import {
 import { TRPCError } from "@trpc/server";
 import type { TrpcContext } from "./_core/context";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { hashPassword, verifyPassword } from "./_core/password";
+import { generateTemporaryPassword, hashPassword, verifyPassword } from "./_core/password";
 import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import {
   publicProcedure, protectedProcedure, router,
 } from "./_core/trpc";
 import {
-  getAllUsers, getUserById, updateUserStatus, updateUserName, updateUserPassword, countActiveAdmins,
+  getAllUsers, getUserById, updateUserStatus, updateUserName, updateUserPassword, setTemporaryPassword, countActiveAdmins,
   getUserBySchoolId, getUserByName, createUserWithCredentials,
   getAllCategories, getCategoryById, createCategory, updateCategory, deleteCategory, countProjectsInCategory,
   getAllProjects, getApprovedProjects, getPendingProjects, getProjectById, getProjectsByUploader,
@@ -25,6 +25,8 @@ import {
   createDownloadRequest, getAllDownloadRequests, getPendingDownloadRequests, updateDownloadRequest,
   getApprovedEditRequests, getUserEditRequests, hasApprovedEditRequest,
   createEditRequest, getAllEditRequests, getPendingEditRequests, updateEditRequest,
+  createPasswordResetRequest, getPasswordResetRequestById, getAllPasswordResetRequests,
+  approvePasswordResetRequest, rejectPasswordResetRequest, getApprovedTemporaryPasswordBySchoolId,
   createActivityLog, getAllActivityLogs, getRecentActivityLogs,
   getDashboardStats, getSchoolYears, getProjectCountsByCategory,
 } from "./db";
@@ -745,6 +747,120 @@ export const appRouter = router({
         entityType: 'edit_request', entityId: input.id,
       });
       return { success: true };
+    }),
+  }),
+
+  // ============ PASSWORD RESETS ("Forgot Password?") ============
+  // No account has a verified email on file (Students never collect one at
+  // sign-up), so recovery is request-and-approve rather than an emailed
+  // link/code: the person submits their School ID, an admin reviews it from
+  // their dashboard, and approving it issues a one-time temporary password
+  // the person must replace the moment they sign back in with it. Admin-only
+  // by design — Advisers no longer see or act on these requests. See
+  // drizzle/schema.ts (`passwordResetRequests`, `users.mustChangePassword`)
+  // for the full design rationale.
+  passwordResets: router({
+    /**
+     * Public — anyone can submit a request without being signed in (that's
+     * the point). Always returns the same generic success response whether
+     * or not the School ID is registered, or whether the account is active,
+     * so this endpoint can never be used to find out which School IDs exist.
+     */
+    request: publicProcedure.input(z.object({
+      schoolId: z.string().trim().min(1, "School ID is required"),
+    })).mutation(async ({ input }) => {
+      const user = await getUserBySchoolId(input.schoolId);
+      if (user && user.status === 'active') {
+        const id = await createPasswordResetRequest(user.id);
+        await createActivityLog({
+          userId: user.id, action: 'password_reset_requested',
+          description: `${user.name || user.schoolId} requested a password reset`,
+          entityType: 'password_reset_request', entityId: id,
+        }).catch(err => console.error('[ActivityLog] Failed to record password_reset_requested:', err));
+      }
+      return { success: true } as const;
+    }),
+
+    /** Admin-only: password reset requests are no longer handled by Advisers. */
+    list: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user!.role !== 'admin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+      }
+      return await getAllPasswordResetRequests();
+    }),
+
+    /**
+     * Issues a fresh temporary password: hashes it onto the account
+     * (`setTemporaryPassword`) and also records the plaintext on the request
+     * row (`approvePasswordResetRequest`) so the Student Login page can look
+     * it up by School ID and let the requester reveal it themselves
+     * (`passwordResets.checkTemporary` below). It's also returned directly
+     * in this response so the approver can see/relay it immediately too.
+     * Either way, it stops being retrievable the instant the requester
+     * finishes setting their own permanent password.
+     */
+    approve: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user!.role !== 'admin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+      }
+      const request = await getPasswordResetRequestById(input.id);
+      if (!request || request.status !== 'pending') {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Request not found or already handled' });
+      }
+      const target = await getUserById(request.userId);
+      if (!target) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'That account no longer exists' });
+      }
+      if (target.id === ctx.user!.id) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'You cannot approve your own password reset request. Ask another admin.' });
+      }
+      const temporaryPassword = generateTemporaryPassword();
+      const passwordHash = await hashPassword(temporaryPassword);
+      await setTemporaryPassword(target.id, passwordHash);
+      await approvePasswordResetRequest(input.id, temporaryPassword);
+      await createActivityLog({
+        userId: ctx.user!.id, action: 'password_reset_approved',
+        description: `Approved password reset for ${target.name || target.schoolId} and issued a temporary password`,
+        entityType: 'password_reset_request', entityId: input.id,
+      });
+      return { success: true, temporaryPassword, userName: target.name, userSchoolId: target.schoolId } as const;
+    }),
+
+    reject: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user!.role !== 'admin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
+      }
+      const request = await getPasswordResetRequestById(input.id);
+      if (!request || request.status !== 'pending') {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Request not found or already handled' });
+      }
+      const target = await getUserById(request.userId);
+      await rejectPasswordResetRequest(input.id);
+      await createActivityLog({
+        userId: ctx.user!.id, action: 'password_reset_rejected',
+        description: `Rejected password reset request for ${target?.name || target?.schoolId || `user ${request.userId}`}`,
+        entityType: 'password_reset_request', entityId: input.id,
+      });
+      return { success: true } as const;
+    }),
+
+    /**
+     * Public — no auth, by design: this is what lets the Login page show a
+     * student (or adviser/admin) their temporary password themselves, right
+     * on the sign-in form, as soon as they type in their School ID. Only
+     * ever returns something once an admin/adviser has approved a request
+     * for that School ID and it hasn't been used yet; everything else
+     * (no account, no request, pending, rejected, already consumed) returns
+     * the same "nothing available" shape. See the lifecycle note on
+     * `passwordResetRequests` in drizzle/schema.ts.
+     */
+    checkTemporary: publicProcedure.input(z.object({
+      schoolId: z.string().trim().min(1),
+    })).query(async ({ input }) => {
+      const temporaryPassword = await getApprovedTemporaryPasswordBySchoolId(input.schoolId);
+      return temporaryPassword
+        ? ({ available: true, temporaryPassword } as const)
+        : ({ available: false } as const);
     }),
   }),
 

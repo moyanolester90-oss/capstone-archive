@@ -83,16 +83,6 @@ async function startServer() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
-      // Without this, a failed query (e.g. a dropped/timed-out connection to
-      // the remote database) only ever reaches the browser as a generic
-      // "Failed query" toast — nothing is printed here in the terminal, so
-      // there's no way to tell a network blip apart from a real bug. This
-      // prints the actual underlying cause (error code, message) so it's
-      // visible in this window when something fails.
-      onError({ error, path }) {
-        console.error(`[ERROR] tRPC ${path ?? "<unknown>"}:`, error.message);
-        if (error.cause) console.error("  cause:", (error.cause as any)?.code || error.cause);
-      },
     })
   );
 

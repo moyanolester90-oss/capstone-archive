@@ -140,7 +140,7 @@ function canvasToJpeg(canvas: HTMLCanvasElement): Promise<Uint8Array> {
 }
 
 /**
- * Document Scanner (librarian/admin only): capture hard-copy pages with a webcam or
+ * Document Converter (librarian/admin only): capture hard-copy pages with a webcam or
  * phone camera (or import photos/scanner images), clean them up, and turn them into
  * one PDF that can be attached to a new or existing capstone.
  */
@@ -321,7 +321,7 @@ export default function Scanner() {
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <CardTitle>Librarian Only</CardTitle>
-            <CardDescription>The Document Scanner is only available to the librarian/admin.</CardDescription>
+            <CardDescription>The Document Converter is only available to the librarian/admin.</CardDescription>
           </CardHeader>
           <CardContent><Link href="/"><Button>Go Home</Button></Link></CardContent>
         </Card>
@@ -333,7 +333,7 @@ export default function Scanner() {
     <div className="min-h-[calc(100vh-5rem)] py-8">
       <div className="container max-w-5xl space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2"><ScanLine className="h-8 w-8 text-primary" /> Document Scanner</h1>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2"><ScanLine className="h-8 w-8 text-primary" /> Document Converter</h1>
           <p className="text-muted-foreground">
             Turn a printed (hard copy) capstone into a PDF: capture each page with a webcam or phone camera, or import images from a scanner, then attach the PDF to a capstone.
           </p>

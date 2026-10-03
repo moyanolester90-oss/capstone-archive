@@ -75,31 +75,6 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
   return { key, url: `/manus-storage/${key}` };
 }
 
-/**
- * Reads a stored file's raw bytes server-side (for the protected in-app
- * document viewer, which never hands the browser a directly-navigable URL).
- */
-export async function storageGetBytes(relKey: string): Promise<Buffer | null> {
-  const key = normalizeKey(relKey);
-  const filePath = path.resolve(UPLOADS_DIR, key);
-  if (!filePath.startsWith(UPLOADS_DIR + path.sep) && filePath !== UPLOADS_DIR) return null;
-  try {
-    return await fs.readFile(filePath);
-  } catch {
-    // Not on local disk — try the optional Forge/S3 storage.
-    if (ENV.forgeApiUrl && ENV.forgeApiKey) {
-      try {
-        const url = await storageGetSignedUrl(key);
-        const resp = await fetch(url);
-        if (resp.ok) return Buffer.from(await resp.arrayBuffer());
-      } catch {
-        /* fall through to null */
-      }
-    }
-    return null;
-  }
-}
-
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
   const key = normalizeKey(relKey);
 
@@ -124,6 +99,43 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
   return `/manus-storage/${key}`;
 }
 
+/**
+ * Reads a stored file's raw bytes directly, server-side — used by the
+ * protected in-app PDF viewer (`projects.viewDocument` in
+ * server/routers.ts) so it's the caller's own authorization check that
+ * decides whether the bytes go out, rather than handing back a fetchable
+ * URL (signed or not) that could be reopened, shared, or cached outside an
+ * authorized session. Returns null if the file can't be found or read,
+ * rather than throwing, so callers can turn that into their own NOT_FOUND.
+ */
+export async function storageGetBytes(relKey: string): Promise<Buffer | null> {
+  const key = normalizeKey(relKey);
+
+  if (ENV.forgeApiUrl && ENV.forgeApiKey) {
+    try {
+      const signedUrl = await storageGetSignedUrl(key);
+      if (signedUrl && signedUrl !== `/manus-storage/${key}`) {
+        const resp = await fetch(signedUrl);
+        if (resp.ok) {
+          return Buffer.from(await resp.arrayBuffer());
+        }
+      }
+    } catch (error) {
+      console.warn("[Storage] Forge fetch failed, falling back to local disk storage:", error);
+    }
+  }
+
+  const filePath = path.resolve(UPLOADS_DIR, key);
+  if (!filePath.startsWith(UPLOADS_DIR + path.sep)) return null;
+  try {
+    return await fs.readFile(filePath);
+  } catch (err: any) {
+    if (err?.code !== "ENOENT") {
+      console.warn("[Storage] Could not read file:", key, err?.message || err);
+    }
+    return null;
+  }
+}
 
 /**
  * Removes a stored file from local disk storage. Missing files are ignored.

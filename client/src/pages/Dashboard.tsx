@@ -181,7 +181,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
               {[
-                { label: "Scan Hard Copy", href: "/admin/scanner", icon: ScanLine },
+                { label: "Convert Hard Copy", href: "/admin/scanner", icon: ScanLine },
                 { label: "Upload", href: "/upload", icon: Upload },
                 { label: "Archive", href: "/admin/archive", icon: FolderOpen },
                 { label: "Categories", href: "/admin/categories", icon: FolderOpen },

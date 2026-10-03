@@ -195,7 +195,8 @@
       "uploadedBy": 1,
       "status": "approved",
       "createdAt": "2026-09-25T16:22:43.494Z",
-      "updatedAt": "2026-09-25T16:22:59.560Z"
+      "updatedAt": "2026-09-25T16:22:59.560Z",
+      "adviserId": 1
     },
     {
       "id": 2,
@@ -214,7 +215,8 @@
       "uploadedBy": 1,
       "status": "approved",
       "createdAt": "2026-09-25T17:14:27.118Z",
-      "updatedAt": "2026-09-28T09:45:06.228Z"
+      "updatedAt": "2026-09-28T09:45:06.228Z",
+      "adviserId": 2
     }
   ],
   "bookmarks": [],
@@ -238,6 +240,7 @@
       "updatedAt": "2026-09-28T09:39:58.127Z"
     }
   ],
+  "editRequests": [],
   "activityLogs": [
     {
       "id": 1,
@@ -1039,6 +1042,18 @@
       "entityType": "user",
       "entityId": 11,
       "createdAt": "2026-09-28T14:01:10.380Z"
+    }
+  ],
+  "advisers": [
+    {
+      "id": 1,
+      "name": "JOHN VIANNEY V. MANUEL",
+      "createdAt": "2026-10-01T13:28:05.446Z"
+    },
+    {
+      "id": 2,
+      "name": "Mr. John Vianney V. Manuel",
+      "createdAt": "2026-10-01T13:28:05.446Z"
     }
   ]
 }

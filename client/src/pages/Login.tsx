@@ -31,7 +31,7 @@ const PORTALS: Record<LoginPortal, { label: string; title: string; icon: typeof 
     label: "Librarian",
     title: "Librarian / Admin Login",
     icon: Library,
-    can: ["Approve, edit and delete capstones", "Scan hard copies into PDF", "Manage users and view requests"],
+    can: ["Approve, edit and delete capstones", "Convert hard copies into PDF", "Manage users and view requests"],
   },
 };
 
@@ -43,8 +43,9 @@ export default function Login() {
   const [, navigate] = useLocation();
   const redirectPath = '/dashboard';
   const params = new URLSearchParams(window.location.search);
-  // Adviser and Librarian/Admin logins are hidden by default — only Student shows.
-  // Pressing Ctrl+Q reveals the other two portals (see useSecretReveal).
+  // Only Student shows by default. Pressing Ctrl+Q switches to staff-only
+  // mode: Student is hidden and only Adviser / Librarian remain (see
+  // useSecretReveal). Pressing it again switches back to Student-only.
   const staffRevealed = useSecretReveal();
   const [portal, setPortal] = useState<LoginPortal>(() => {
     const p = params.get("portal");
@@ -53,16 +54,36 @@ export default function Login() {
   const [schoolId, setSchoolId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const visiblePortals = (Object.keys(PORTALS) as LoginPortal[]).filter(p => p === "student" || staffRevealed);
+  const [showTempPassword, setShowTempPassword] = useState(false);
+  const visiblePortals = (Object.keys(PORTALS) as LoginPortal[]).filter(p => (p === "student") !== staffRevealed);
 
-  // If the staff portals get hidden again (or the page loaded with one selected
-  // but not yet revealed), fall back to the Student tab rather than leaving a
-  // hidden portal silently selected.
+  // Debounce the School ID before checking for a waiting temporary
+  // password, so this doesn't fire a request on every keystroke.
+  const [debouncedSchoolId, setDebouncedSchoolId] = useState("");
   useEffect(() => {
-    if (!staffRevealed && portal !== "student") {
-      setPortal("student");
+    const t = setTimeout(() => setDebouncedSchoolId(schoolId), 400);
+    return () => clearTimeout(t);
+  }, [schoolId]);
+  // Collapse the reveal and drop the stale result the instant the School ID
+  // changes again, rather than leaving a previous person's password exposed.
+  useEffect(() => {
+    setShowTempPassword(false);
+  }, [schoolId]);
+
+  const { data: tempPasswordCheck } = trpc.passwordResets.checkTemporary.useQuery(
+    { schoolId: debouncedSchoolId },
+    { enabled: debouncedSchoolId.length > 0, refetchOnWindowFocus: false, staleTime: 0 }
+  );
+
+  // Keep the selected tab in sync with which set is currently visible: fall
+  // back to Student when staff mode turns off, and to the first staff portal
+  // when it turns on, rather than leaving a hidden portal silently selected.
+  useEffect(() => {
+    if (!visiblePortals.includes(portal)) {
+      setPortal(visiblePortals[0] ?? "student");
     }
-  }, [staffRevealed, portal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staffRevealed]);
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async () => {
@@ -138,7 +159,7 @@ export default function Login() {
             </TabsList>
             {staffRevealed && (
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Staff logins revealed. Press <kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Ctrl</kbd>+<kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Q</kbd> to hide them again.
+                Staff-only mode. Press <kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Ctrl</kbd>+<kbd className="px-1 py-0.5 rounded border bg-muted font-mono">Q</kbd> to show Student sign-in again.
               </p>
             )}
 
@@ -177,8 +198,42 @@ export default function Login() {
                         />
                       </div>
                     </div>
+
+                    {tempPasswordCheck?.available && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30 p-3 space-y-1.5">
+                        <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                          <KeyRound className="h-3.5 w-3.5" /> Temporary Password
+                        </p>
+                        <div className="flex items-center gap-2 rounded-md border border-amber-300/60 bg-white/70 dark:bg-black/20 px-2.5 py-1.5">
+                          <code className="flex-1 text-sm font-mono tracking-wide text-amber-900 dark:text-amber-200">
+                            {showTempPassword ? tempPasswordCheck.temporaryPassword : "•".repeat(tempPasswordCheck.temporaryPassword.length)}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => setShowTempPassword(v => !v)}
+                            className="text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"
+                            aria-label={showTempPassword ? "Hide temporary password" : "Show temporary password"}
+                            tabIndex={-1}
+                          >
+                            {showTempPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
+                          Your password reset was approved. Enter this as your password below to sign in, then you'll be asked to create a new one.
+                        </p>
+                      </div>
+                    )}
+
                     <div className="space-y-1.5">
-                      <Label htmlFor={`password-${p}`}>Password</Label>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={`password-${p}`}>Password</Label>
+                        <Link
+                          href={`/forgot-password?schoolId=${encodeURIComponent(schoolId)}`}
+                          className="text-xs font-medium text-[#1a3a6b] hover:underline"
+                        >
+                          Forgot password?
+                        </Link>
+                      </div>
                       <div className="relative">
                         <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input

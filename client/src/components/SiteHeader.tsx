@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   BookOpen, Upload, Star, LayoutDashboard, FileText,
-  FolderOpen, Tags, Users, Download, Activity, LogIn, LogOut, Menu, ScanLine, UserCircle, PencilLine,
+  FolderOpen, Tags, Users, Download, Activity, LogIn, LogOut, Menu, ScanLine, UserCircle, PencilLine, KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationBell from "./NotificationBell";
@@ -41,11 +41,12 @@ export default function SiteHeader() {
 
   const adminItems = isAdmin ? [
     { href: "/admin/archive", label: "Archive", icon: FolderOpen },
-    { href: "/admin/scanner", label: "Scanner", icon: ScanLine },
+    { href: "/admin/scanner", label: "Converter", icon: ScanLine },
     { href: "/admin/categories", label: "Categories", icon: Tags },
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/downloads", label: "View Requests", icon: Download },
     { href: "/admin/edit-requests", label: "Edit Requests", icon: PencilLine },
+    { href: "/password-resets", label: "Password Resets", icon: KeyRound },
     { href: "/admin/activities", label: "Activity Logs", icon: Activity },
   ] : [];
 
